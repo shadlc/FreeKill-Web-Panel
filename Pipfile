@@ -1,0 +1,17 @@
+[[source]]
+#url = "https://pypi.org/simple"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+flask = "*"
+flask-socketio = "*"
+flask-classful = "*"
+requests = "*"
+chardet = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"

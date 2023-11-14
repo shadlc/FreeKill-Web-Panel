@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans">
+<head>
+	<meta charset="UTF-8" />
+	<meta content="yes" name="apple-mobile-web-app-capable"/>
+	<meta name="viewport"
+		content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover" />
+	<title>新月杀控制面板</title>
+	<link rel="shortcut icon" href="favicon.png"/>
+	<link rel="apple-touch-icon" href="favicon.png" />
+    <link rel="stylesheet" href="../lib/css/style.css"/>
+</head>
+
+<body class="center">
+    <div class="container">
+        <div id="header">
+            <h1 id="title"><a href="https://github.com/Qsgs-Fans/FreeKill" target="_blank">新月杀控制面板</a></h1>
+            <div id="color_scheme"></div>
+        </div>
+    </div>
+    <div id="server_control" class="main container">
+        <h2 id="empty_text">Control page is building~</h2>
+    </div>
+    <footer>
+        <span><a href="https://github.com/shadlc/FreeKill-Web-Panel" title="FreeKill-Web-Panel" target="_blank"><u>FKWP</u></a></span>
+        <span>made by <a href="mailto:i@shadlc.net" title="i@shadlc.net"><u>Shadlc</u></a></span>
+    </footer>
+</body>
+    <script type="module" src="../lib/js/control.js"></script>
+    <script>
+        document.addEventListener('keydown', (e)=>{
+        if(e.key == 'Escape') {
+            document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());
+        } else if(e.key == 'Enter') {
+            document.querySelectorAll('#msg_dialog_confirm_btn').forEach((e)=>e.click());
+        }
+        });
+    </script>
+</html>

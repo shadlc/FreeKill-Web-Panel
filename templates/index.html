@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans">
+<head>
+	<meta charset="UTF-8" />
+	<meta content="yes" name="apple-mobile-web-app-capable"/>
+	<meta name="viewport"
+		content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover" />
+	<title>新月杀控制面板</title>
+	<link rel="shortcut icon" href="lib/favicon.png"/>
+	<link rel="apple-touch-icon" href="lib/favicon.png" />
+    <link rel="stylesheet" href="lib/css/style.css"/>
+</head>
+
+<body class="center">
+    <div class="container">
+        <div id="header">
+            <span id="add_new_btn" class="btn"><span>+</span></span>
+            <span id="refresh_btn" class="btn" ><span>⟳</span></span>
+            <h1 id="title"><a href="https://github.com/Qsgs-Fans/FreeKill" target="_blank">新月杀控制面板</a></h1>
+            <div id="color_scheme"></div>
+        </div>
+    </div>
+    <div id="server_list" class="main container"></div>
+    <div id="add_modal" class="modal">
+        <div class="modal-dialog">
+            <div class="mondal-title">
+                <h3>新增服务器</h3>
+                <span id="add_modal_close" class="close-btn"></span>
+            </div>
+            <div class="modal-content center">
+                <div id="server_name" class="text_input must" title="服务器展示名称">
+                    <label for="server_name_input">服务器名</label>
+                    <input id="server_name_input" type="text" />
+                </div>
+                <div id="server_port" class="text_input must" title="服务器端口号">
+                    <label for="server_port_input">监听端口</label>
+                    <input id="server_port_input" type="text" />
+                </div>
+                <div id="server_path" class="text_input must" title="服务器文件绝对目录">
+                    <label for="server_path_input">启动路径</label>
+                    <input id="server_path_input" type="text" />
+                </div>
+                <div id="server_desc" class="text_input" title="服务器简介，显示在加入服务器界面的那行文字">
+                    <label for="server_desc_input">服务器简介</label>
+                    <input id="server_desc_input" type="text" value="A FreeKill Server" />
+                </div>
+                <div id="icon_url" class="text_input" title="服务器图标对应的图片链接，必须是网络图片">
+                    <label for="icon_url_input">图标地址</label>
+                    <input id="icon_url_input" type="text" value="https://gitee.com/notify-ctrl/FreeKill/raw/master/image/icon.png" />
+                </div>
+                <div id="capacity" class="text_input" title="服务器最大承载玩家的容量">
+                    <label for="capacity_input">最大人数</label>
+                    <input id="capacity_input" type="number" min="0" step="1" value="100" />
+                </div>
+                <div id="temp_ban_time" class="text_input" title="对于逃跑玩家的自动封禁时长，单位为分钟">
+                    <label for="temp_ban_time_input">封禁时长</label>
+                    <input id="temp_ban_time_input" type="number" min="0" step="1" value="20" />
+                </div>
+                <div id="motd" class="text_input" title="用户进入大厅时候在屏幕右侧看到的文字，支持 markdown 格式
+                ">
+                    <label for="motd_input">服务器标语</label>
+                    <input id="motd_input" type="text" value="Welcome!" />
+                </div>
+                <div id="enable_bots" class="text_input" title="是否启用局内机器人">
+                    <label>局内机器人</label>
+                    <div>
+                        <label for="enable_bots_input">启用</label>
+                        <input id="enable_bots_input" type="radio" name="enable_bots_input" value="true" checked />
+                        <label for="disable_bots_input">禁用</label>
+                        <input id="disable_bots_input" type="radio" name="enable_bots_input" value="false" />
+                    </div>
+                </div>
+            </div>
+            <div class="mondal-footer">
+                <input id="start_server_btn" class="btn" type="button" value="启动" />
+                <input id="start_cancel_btn" class="btn" type="button" value="取消" />
+            </div>
+        </div>
+    </div>
+    <footer>
+        <span><a href="https://github.com/shadlc/FreeKill-Web-Panel" title="FreeKill-Web-Panel" target="_blank"><u>FKWP</u></a></span>
+        <span>made by <a href="mailto:i@shadlc.net" title="i@shadlc.net"><u>Shadlc</u></a></span>
+    </footer>
+</body>
+    <script type="module" src="lib/js/index.js"></script>
+    <script>
+        document.addEventListener('keydown', (e)=>{
+        if(e.key == 'Escape') {
+            document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());
+        } else if(e.key == 'Enter') {
+            document.querySelectorAll('#msg_dialog_confirm_btn').forEach((e)=>e.click());
+        }
+        });
+        modal = document.getElementById("add_modal");
+        document.getElementById("add_new_btn").addEventListener("click", ()=>{
+          modal.style.display = "inherit";
+        });
+        
+        document.getElementById("add_modal_close").addEventListener("click", ()=>{
+          modal.style.display = "none";
+        });
+        
+        document.getElementById("start_cancel_btn").addEventListener("click", ()=>{
+          modal.style.display = "none";
+        });
+        document.addEventListener("keydown", function(event) {
+          if (event.key === "Escape") {
+            modal.style.display = "none";
+          }
+        });
+    </script>
+</html>
