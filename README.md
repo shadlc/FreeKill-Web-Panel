@@ -22,6 +22,10 @@
 
 ## 📸 相关截图
 
+<div align=center>
+<img src="https://github.com/shadlc/FreeKill-Web-Panel/assets/46913095/9c075b65-ca20-4cc1-adb6-f43215fca346" width=70%>
+</div>
+
 
 ## 📝 使用指南
 - **首先确保你安装了 Python3.11、tmux、git**
@@ -31,9 +35,10 @@
 - **启动步骤**
   1. 执行 `git clone https://github.com/shadlc/FreeKill-Web-Panel.git`
   2. 执行 `cd FreeKill-Web-Panel/`
-  3. 执行 `sh start.sh`
-  4. 使用任意反向代理软件代理本机9500端口到目标路径
-  5. 打开网页并使用
+  3. 执行 `chmod +x start.sh`
+  4. 执行 `sh start.sh`
+  5. 使用任意反向代理软件代理本机9500端口到目标路径
+  6. 打开网页并使用
 
 
 ## 🔒️ 许可协议
