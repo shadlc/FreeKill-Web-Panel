@@ -14,14 +14,14 @@ export function showDialog(msg, title='提示', callback=null) {
   let msg_div = `
   <div id="msg_dialog" class="modal">
     <div class="modal-dialog">
-      <div class="mondal-title">
+      <div class="modal-title">
           <h3>`+title+`</h3>
           <span class="close-btn" onclick="document.getElementById('msg_dialog').remove();"></span>
       </div>
       <div class="modal-content center">
           <p1>`+msg+`</p1>
       </div>
-      <div class="mondal-footer">
+      <div class="modal-footer">
           <input id="msg_dialog_confirm_btn" class="btn" type="button" value="确定" onclick="document.getElementById('msg_dialog').remove();" />
       </div>
     </div>

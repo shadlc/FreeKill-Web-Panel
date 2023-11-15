@@ -34,7 +34,8 @@ i.bi {
     font-family: "iconfont";
 }
 footer {
-    margin-bottom: 0.5rem;
+    position: fixed;
+    bottom: 0.5rem;
 }
 ::-webkit-scrollbar {
     width: 10px;
@@ -121,7 +122,7 @@ footer {
     overflow-x: hidden;
     overflow-y: auto;
 }
-.mondal-title h3 {
+.modal-title h3 {
     margin: 0 auto;
     text-align: center;
 }
@@ -131,7 +132,7 @@ footer {
     align-items: center;
     padding: 0.5rem;
 }
-.mondal-footer {
+.modal-footer {
     position: relative;
     display: flex;
     justify-content: center;
@@ -139,7 +140,7 @@ footer {
     width: 100%;
     margin: 0.2rem auto;
 }
-.mondal-footer * {
+.modal-footer * {
     margin: 0.5rem;
 }
 .text_input {
@@ -209,41 +210,29 @@ footer {
     border-bottom: 3px solid;
     text-align: center;
 }
-#add_new_btn {
+#add_new_btn, #refresh_btn {
     position: absolute;
-    display: block;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     width: 1.5rem;
     height: 1.5rem;
     padding: 0.2rem;
     top: 0;
-    left: 0;
     cursor: pointer;
 }
-#add_new_btn span{
-    position: absolute;
-    display: block;
-    top: -0.9rem;
-    left: 0rem;
-    user-select: none;
-    font-size: 2.5rem;
+#add_new_btn {
+    left: 0;
 }
 #refresh_btn {
-    position: absolute;
-    display: block;
-    width: 1.5rem;
-    height: 1.5rem;
-    padding: 0.2rem;
-    top: 0;
     left: 2.5rem;
-    cursor: pointer;
 }
-#refresh_btn span{
-    position: absolute;
+#refresh_btn i, #add_new_btn i{
+    position: relative;
     display: block;
-    top: -0.3rem;
-    left: 0.1rem;
     user-select: none;
-    font-size: 1.8rem;
+    font-size: 1.6rem;
+    font-weight: bold;
 }
 #menu {
     position: absolute;

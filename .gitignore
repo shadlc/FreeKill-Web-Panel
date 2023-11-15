@@ -1,5 +1,11 @@
+# VSCode
+.vscode
+
 # config file
 config.json
+
+# dev Python file
+dev.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -28,7 +28,7 @@ window.onload = function() {
 
 // 获取服务器列表
 function refresh_servers() {
-  let refresh_btn = document.querySelector('#refresh_btn>span');
+  let refresh_btn = document.querySelector('#refresh_btn>*');
   refresh_btn.style.animation = 'rotate 1s';
 
   fetch('v1/servers', {
