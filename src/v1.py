@@ -1,3 +1,4 @@
+import re
 from flask_classful import FlaskView, route, request
 
 from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, writeGameConfig, isFileExists
@@ -24,12 +25,12 @@ class V1API(FlaskView):
     @route('add_server', methods=['POST'])
     def add_server(self):
         name = request.json.get('name', '')
-        port = int(request.json.get('port')) if request.json.get('port') != '' else 0
+        port = int(request.json.get('port')) if request.json.get('port').isdigit() else 0
         path = request.json.get('path', '')
         desc = request.json.get('desc', '')
         icon = request.json.get('icon', '') 
-        capacity = int(request.json.get('capacity')) if request.json.get('capacity') != '' else 0
-        temp_ban_time = int(request.json.get('temp_ban_time')) if request.json.get('temp_ban_time') != '' else 0
+        capacity = int(request.json.get('capacity')) if request.json.get('capacity').isdigit() else 0
+        temp_ban_time = int(request.json.get('temp_ban_time')) if request.json.get('temp_ban_time').isdigit() else 20
         motd = request.json.get('motd', '')
         enable_bots = bool(request.json.get('enable_bots', True))
         
@@ -37,17 +38,27 @@ class V1API(FlaskView):
         if not name:
             return restful(400, f'服务器名称不能为空')
         elif not port:
-            return restful(400, f'服务器端口不能为空')
+            return restful(400, f'服务器端口无效')
         elif not path:
             return restful(400, f'服务器启动路径不能为空')
+        elif not capacity:
+            return restful(400, f'服务器最大人数值无效')
+        elif not capacity:
+            return restful(400, f'服务器最大人数值无效')
         elif name in [server.name for server in list]:
             return restful(409, f'该服务器名称重名：{name}')
+        elif match := re.search(r'([<>:;"/\\\|\?\*\x00-\x1F\x7F\'\`\s])', name):
+            result = match.groups()[0]
+            return restful(409, f'该服务器名称存在不可用字符：<{result}>')
         elif isPortBusy(port):
             return restful(409, f'该端口已被占用：{port}')
-        elif port < 1025 or port > 65535:
+        elif port < 1025 and port > 65535:
             return restful(409, f'该端口不可用：{port}')
         elif not isFileExists(f'{path}/FreeKill'):
             return restful(409, f'该路径无效')
+        elif match := re.search(r'([<>:;"\\|\?\*\x00-\x1F\x7F\'\`\s])', path):
+            result = match.groups()[0]
+            return restful(409, f'该服务器路径存在不可用字符：<{result}>')
         elif path in [server.path for server in list]:
             return restful(409, f'该路径已经启动了一个服务器')
 
@@ -62,7 +73,7 @@ class V1API(FlaskView):
             return restful(400, f'服务器配置写入错误，启动失败：{e}')
         pid = startGameServer(name, port, path)
         if pid == 0:
-            return restful(400, '服务器启动失败')
+            return restful(400, '服务器启动失败，请联系管理员')
         server = Server()
         server.init(name, port, path=path)
         self.server_list.add(server)
@@ -80,7 +91,7 @@ class V1API(FlaskView):
                     server.pid = pid
                     return restful(200, '服务器启动成功')
 
-        return restful(200, '服务器启动失败')
+        return restful(200, '服务器启动失败，该端口可能已被占用')
 
     @route('stop_server', methods=['GET'])
     def stop_server(self):

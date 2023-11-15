@@ -1,6 +1,6 @@
 import json
 
-from src.utils import getProcessRuntime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, getServerList, getServerFromConfig, saveServerFromConfig, getPlayers
+from src.utils import getProcessRuntime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, getServerList, getServerFromConfig, saveServerToConfig, getPlayers
 
 class Server:
     def __init__(self) -> None:
@@ -51,7 +51,7 @@ class Server:
             if not self.pid or getProcessRuntime(self.pid) == '0':
                 self.status = '未运行'
             self.version = getVersionFromPath(self.path)
-        except Exception as e:
+        except:
             self.status = '版本读取异常'
 
     def info(self):
@@ -62,9 +62,9 @@ class Server:
             self.status = '运行中'
             server_list = getServerList()
             for server_info in server_list:
-                server_port = int(server_info[2]) if len(server_info) >=3 else self.port
+                server_name = server_info[0] if len(server_info) else ''
                 server_pid = int(server_info[1]) if len(server_info) >=2 else self.pid
-                if self.port == server_port:
+                if self.name == server_name:
                     self.pid = server_pid
                     self.players = getPlayers(self.name)
                     runtime = getProcessRuntime(self.pid)
@@ -124,7 +124,7 @@ class ServerList:
     def add(self, server: Server) -> None:
         self.list.append(server)
         self.dict[server.name] = [server.port, server.path]
-        saveServerFromConfig(self.dict)
+        saveServerToConfig(self.dict)
     
     def remove(self, server: Server) -> None:
         self.list.remove(server)

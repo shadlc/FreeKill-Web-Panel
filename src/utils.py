@@ -68,6 +68,19 @@ def getProcPathByPid(pid: int) -> str:
     path = path.rsplit("/", 1)[0].rstrip("build").rstrip("/")
     return path
 
+# 通过PID获取程序的监听端口
+def getProcPortByPid(pid: int) -> int:
+    command = '''netstat -tlnp | grep ''' + str(pid) + ''' | awk '{print $4}' '''
+    port = ''
+    try:
+        port = subprocess.check_output(command, shell=True).decode('utf-8').strip()
+    except:...
+    port = port.rsplit(":").pop()
+    if port.isdigit():
+        return int(port)
+    else:
+        return 0
+
 # 判断端口号是否是被占用
 def isPortBusy(port: int) -> bool:
     command = f"lsof -i:{port}"
@@ -91,7 +104,7 @@ def getServerFromConfig() -> dict:
     return json_data
 
 # 保存历史服务器列表
-def saveServerFromConfig(server_dict: list[str]) -> str:
+def saveServerToConfig(server_dict: list[str]) -> str:
     try:
         json_data = json.load(open(config_file))
         json_data['server_dict'] = server_dict
@@ -140,7 +153,7 @@ def deleteGameServer(server_name: str) -> str:
             del_name = name
     if del_name:
         server_dict.pop(del_name)
-        return saveServerFromConfig(server_dict)
+        return saveServerToConfig(server_dict)
     return '服务器已经不存在'
     
 # 写入游戏配置文件
