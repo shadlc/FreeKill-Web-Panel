@@ -14,7 +14,8 @@
 <body class="center">
     <div class="container">
         <div id="header">
-            <h1 id="title"><a href="https://github.com/Qsgs-Fans/FreeKill" target="_blank">新月杀控制面板</a></h1>
+            <span id="back_btn" class="btn"><i class="bi">&#xF12F;</i></span>
+            <h1 id="title"><a href="javascript:history.back();">新月杀控制面板</a></h1>
             <div id="color_scheme"></div>
         </div>
     </div>
@@ -29,11 +30,15 @@
     <script type="module" src="../lib/js/control.js"></script>
     <script>
         document.addEventListener('keydown', (e)=>{
-        if(e.key == 'Escape') {
-            document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());
-        } else if(e.key == 'Enter') {
-            document.querySelectorAll('#msg_dialog_confirm_btn').forEach((e)=>e.click());
-        }
+          if(e.key == 'Escape') {
+              document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());
+          } else if(e.key == 'Enter') {
+              document.querySelectorAll('#msg_dialog_confirm_btn').forEach((e)=>e.click());
+          }
+        });
+        
+        document.getElementById("back_btn").addEventListener("click", ()=>{
+          window.history.back();
         });
     </script>
 </html>

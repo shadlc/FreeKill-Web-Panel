@@ -1,4 +1,4 @@
-import { setScheme, showDialog } from './utils.js'
+import { setScheme, showDialog, addSecondsToTime } from './utils.js'
 
 // 主题相关
 const themeScheme = window.matchMedia('(prefers-color-scheme: light)');
@@ -23,6 +23,15 @@ function changeScheme(){
 
 // 页面加载完毕后触发
 window.onload = function() {
+  setInterval(() => {
+    document.querySelectorAll('span.server-time').forEach((e)=>{
+      let origin_time = e.innerText;
+      if(origin_time != '0') {
+        let calc_time = addSecondsToTime(origin_time, 1);
+        e.innerText = calc_time;
+      }
+    });
+  }, 1000);
 
 };
 
@@ -149,8 +158,7 @@ function initServerToggleBtn() {
     }
     document.addEventListener('click', handleDocumentClick);
   }
-  let divs = document.querySelectorAll('.server-toggle');
-  divs.forEach(function(div) {
+  document.querySelectorAll('.server-toggle').forEach(function(div) {
     div.addEventListener('click', handleMenuClick);
   });
 }

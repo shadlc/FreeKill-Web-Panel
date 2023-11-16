@@ -1,6 +1,7 @@
 import json
+import time
 
-from src.utils import getProcessRuntime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, getServerList, getServerFromConfig, saveServerToConfig, getPlayers
+from src.utils import getProcessRuntime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, getServerList, getServerFromConfig, saveServerToConfig, getPlayers, getFKVersion
 
 class Server:
     def __init__(self) -> None:
@@ -87,6 +88,8 @@ class ServerList:
     def __init__(self) -> None:
         self.dict = {}
         self.list: list[Server | None] = []
+        self.latest_fk_version = ''
+        self.version_check_timestamp = 0
         
         self.refreshRunning()
         self.dict = getServerFromConfig()
@@ -132,3 +135,9 @@ class ServerList:
     def getDict(self) -> dict:
         self.refreshRunning()
         return self.dict
+    
+    def checkFKVersion(self) -> str:
+        if not self.latest_fk_version or time.time() - self.version_check_timestamp > 3600:
+            self.latest_fk_version = getFKVersion()
+            self.version_check_timestamp = int(time.time())
+        return self.latest_fk_version

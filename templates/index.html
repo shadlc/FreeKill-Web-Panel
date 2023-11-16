@@ -86,9 +86,9 @@
     <script>
         document.addEventListener('keydown', (e)=>{
         if(e.key == 'Escape') {
-            document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());
+          document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());
         } else if(e.key == 'Enter') {
-            document.querySelectorAll('#msg_dialog_confirm_btn').forEach((e)=>e.click());
+          document.querySelectorAll('#msg_dialog_confirm_btn').forEach((e)=>e.click());
         }
         });
         modal = document.getElementById("add_modal");

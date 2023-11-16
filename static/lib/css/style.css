@@ -56,31 +56,6 @@ footer {
 ::-webkit-scrollbar-thumb:hover {
     box-shadow: inset 0 0 10px gray;
 }
-@media (max-width: 400px) {
-    #title {
-        display: none;
-    }
-    .text_input>*:nth-child(2) {
-        text-align: start !important;
-    }
-}
-@media (max-width: 600px) {
-    .server-time,
-    .server-port {
-        display: none !important;
-    }
-    .server-version {
-        border-right: none !important;
-    }
-}
-@media (max-width: 430px) {
-    .server-version {
-        display: none !important;
-    }
-    .server-players {
-        border-right: none !important;
-    }
-}
 
 .hide {
     display: none !important;
@@ -210,7 +185,7 @@ footer {
     border-bottom: 3px solid;
     text-align: center;
 }
-#add_new_btn, #refresh_btn {
+#header .btn {
     position: absolute;
     display: flex;
     justify-content: center;
@@ -221,18 +196,18 @@ footer {
     top: 0;
     cursor: pointer;
 }
-#add_new_btn {
-    left: 0;
-}
-#refresh_btn {
-    left: 2.5rem;
-}
-#refresh_btn i, #add_new_btn i{
+#header .btn i{
     position: relative;
     display: block;
     user-select: none;
     font-size: 1.6rem;
     font-weight: bold;
+}
+#add_new_btn, #back_btn {
+    left: 0;
+}
+#refresh_btn {
+    left: 2.5rem;
 }
 #menu {
     position: absolute;
@@ -400,6 +375,7 @@ footer {
     display: flex;
     flex-direction: column;
     align-items: center;
+    overflow: hidden;
 }
 .server-item {
     position: relative;
@@ -407,7 +383,7 @@ footer {
     flex-direction: row;
     align-items: center;
     height: 6rem;
-    max-width: 800px;
+    width: 80%;
     margin: 1rem;
     padding: 0.2rem;
     border: 3px solid;
@@ -423,10 +399,12 @@ footer {
     border-right: 1rem;
 }
 .server-info {
-    width: 100%;
+    flex-grow: 1;
+    flex-shrink: 1;
     align-items: start;
     text-align: start;
     padding: 0 0.2rem;
+    overflow: hidden;
 }
 .server-info span {
     font-weight: bold;
@@ -437,6 +415,8 @@ footer {
 .server-link {
     display: inline-block;
     width: fit-content;
+    max-width: 95%;
+    overflow: hidden;
 }
 .server-toggle {
     position: absolute;
@@ -467,4 +447,49 @@ footer {
 }
 .server-menu>*:last-child {
     border-bottom: none;
+}
+
+@media (max-width: 800px) {
+    .server-item {
+        width: 560px;
+    }
+}
+@media (max-width: 600px) {
+    .server-time,
+    .server-port {
+        display: none !important;
+    }
+    .server-version {
+        border-right: none !important;
+    }
+    .server-item {
+        width: 400px;
+    }
+}
+@media (max-width: 440px) {
+    .server-item {
+        width: 360px;
+    }
+}
+@media (max-width: 400px) {
+    #title {
+        display: none;
+    }
+    .server-version {
+        display: none !important;
+    }
+    .server-players {
+        border-right: none !important;
+    }
+    .text_input>*:nth-child(2) {
+        text-align: start !important;
+    }
+    .server-item {
+        width: 280px;
+    }
+}
+@media (min-width: 1000px) {
+    .server-item {    
+        min-width: 800px;
+    }
 }

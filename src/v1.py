@@ -81,7 +81,7 @@ class V1API(FlaskView):
 
     @route('start_server', methods=['GET'])
     def restart_server(self):
-        server_name = request.args.get('name').strip()
+        server_name = request.args.get('name', '').strip()
         list = self.server_list.getList()
         for server in list:
             if server.name == server_name:
@@ -91,11 +91,11 @@ class V1API(FlaskView):
                     server.pid = pid
                     return restful(200, '服务器启动成功')
 
-        return restful(200, '服务器启动失败，该端口可能已被占用')
+        return restful(400, '服务器启动失败，该端口可能已被占用')
 
     @route('stop_server', methods=['GET'])
     def stop_server(self):
-        server_name = request.args.get('name').strip()
+        server_name = request.args.get('name', '').strip()
         list = self.server_list.getList()
         for server in list:
             if not isPortBusy(server.port):
@@ -103,11 +103,11 @@ class V1API(FlaskView):
             if server.name == server_name and stopGameServer(server.name):
                 return restful(200, '服务器停止成功')
 
-        return restful(200, '服务器停止失败')
+        return restful(400, '服务器停止失败')
 
     @route('del_server', methods=['GET'])
     def del_server(self):
-        server_name = request.args.get('name').strip()
+        server_name = request.args.get('name', '').strip()
         list = self.server_list.getList()
         for server in list:
             if server.name == server_name:
@@ -119,4 +119,16 @@ class V1API(FlaskView):
                 self.server_list.refreshConfig()
                 return restful(200, '已删除该服务器')
 
-        return restful(200, '无法找到该服务器')
+        return restful(404, '无法找到该服务器')
+
+    @route('check_version', methods=['GET'])
+    def del_server(self):
+        check_type = request.args.get('type', '').strip()
+        if check_type == 'FreeKill':
+            version = self.server_list.checkFKVersion();
+            if version:
+                return restful(200, '', {'version': version})
+            else:
+                return restful(400, f'获取FreeKill最新版本号时发生网络错误')
+
+        return restful(404, '无法解析该请求')

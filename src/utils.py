@@ -1,5 +1,6 @@
 import re
 import json
+import time
 import base64
 import requests
 import subprocess
@@ -19,6 +20,18 @@ def getImgBase64FromURL(url: str) -> str:
         return ''
     except:
         return ''
+
+# 取得FreeKill最新版本
+def getFKVersion() -> str | None:
+    try:
+        url = 'https://gitee.com/notify-ctrl/FreeKill/releases/latest'
+        response = requests.get(url)
+        if response.status_code == 200:
+            version = response.url.split('/').pop()
+            return version
+        return
+    except:
+        return
 
 # 从指定PID进程获取其运行时长
 def getProcessRuntime(pid: int) -> str:
@@ -44,13 +57,22 @@ def getVersionFromPath(path: str) -> str:
     except:...
     return ''
 
+# 运行Bash指令并获取结果
+def runCmd(cmd: str) -> str | None:
+    # stime = time.time()
+    try:
+        result = subprocess.check_output(cmd, shell=True).decode('utf-8').strip()
+    except:
+        return None
+    # etime = time.time()
+    # print(f'执行指令 {cmd}\n耗时:{round(etime - stime, 3)}')
+    return result
+
 # 获取正在运行的FreeKill服务器列表以及其信息
 def getServerList() -> list[str]:
     command = ''' ps -ef | grep -E '\?.*tmux\s+.*FreeKill-.*FreeKill -s' | awk '{print $12" "$2" "$15}' '''
-    server_list = []
-    try:
-        server_list = subprocess.check_output(command, shell=True).decode('utf-8').strip()
-    except:...
+    result = runCmd(command)
+    server_list = result if result else ''
     server_list = [i.split(" ") for i in [j for j in server_list.split("\n")]]
     for i in server_list:
         if i == ['']: continue
@@ -61,20 +83,16 @@ def getServerList() -> list[str]:
 # 通过PID获取程序的执行路径
 def getProcPathByPid(pid: int) -> str:
     command = f"readlink /proc/{pid}/exe"
-    path = ''
-    try:
-        path = subprocess.check_output(command, shell=True).decode('utf-8').strip()
-    except:...
+    result = runCmd(command)
+    path = result if result else ''
     path = path.rsplit("/", 1)[0].rstrip("build").rstrip("/")
     return path
 
 # 通过PID获取程序的监听端口
 def getProcPortByPid(pid: int) -> int:
-    command = '''netstat -tlnp | grep ''' + str(pid) + ''' | awk '{print $4}' '''
-    port = ''
-    try:
-        port = subprocess.check_output(command, shell=True).decode('utf-8').strip()
-    except:...
+    command = '''netstat -tlnp 2>/dev/null | grep ''' + str(pid) + ''' | awk '{print $4}' '''
+    result = runCmd(command)
+    port = result if result else ''
     port = port.rsplit(":").pop()
     if port.isdigit():
         return int(port)
@@ -84,11 +102,9 @@ def getProcPortByPid(pid: int) -> int:
 # 判断端口号是否是被占用
 def isPortBusy(port: int) -> bool:
     command = f"lsof -i:{port}"
-    try:
-        subprocess.check_output(command, shell=True)
-    except:
-        return False
-    return True
+    if runCmd(command):
+        return True
+    return False
 
 # 判断某文件是否存在
 def isFileExists(path: str) -> bool:
@@ -129,7 +145,7 @@ def startGameServer(name: str, port: int, path: str) -> int:
     command = f''' cd {path};tmux new -d -s "FreeKill-{name}" "./FreeKill -s {port}" '''
     subprocess.Popen([command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).wait()
     command = ''' ps -ef | grep -E '\?.*tmux\s+.*FreeKill-''' + name + ''' ' | awk '{print $2}' '''
-    result = subprocess.check_output(command, shell=True).decode('utf-8').strip()
+    result = runCmd(command)
     if result.isdigit():
         return int(result)
     else:
@@ -138,11 +154,9 @@ def startGameServer(name: str, port: int, path: str) -> int:
 # 停止服务器
 def stopGameServer(name: str) -> bool:
     command = f''' tmux send-keys -t "FreeKill-{name}" C-d '''
-    try:
-        subprocess.check_output(command, shell=True).decode('utf-8').strip()
-    except:
-        return False
-    return True
+    if runCmd(command) != None:
+        return True
+    return False
 
 # 删除服务器
 def deleteGameServer(server_name: str) -> str:
@@ -155,7 +169,7 @@ def deleteGameServer(server_name: str) -> str:
         server_dict.pop(del_name)
         return saveServerToConfig(server_dict)
     return '服务器已经不存在'
-    
+
 # 写入游戏配置文件
 def writeGameConfig(path: str, config: dict) -> str | None:
     try:
@@ -169,19 +183,15 @@ def writeGameConfig(path: str, config: dict) -> str | None:
 # 简单的对tmux窗口进行内容捕获
 def captureTmux(tid: str) -> str:
     command = f'tmux capture-pane -pS - -t {tid}'
-    result = ''
-    try:
-        result = subprocess.check_output(command, shell=True).decode('utf-8').strip()
-    except: ...
+    result = runCmd(command)
+    result = result if result else ''
     return result
 
 # 在指定tmux内执行语句，并对Tmux窗口进行内容捕获
 def runTmuxCmd(tid: str, cmd: str) -> str:
     command = f'tmux send-keys -t {tid} "{cmd}" Enter;sleep 0.1;tmux capture-pane -peS - -t {tid}'
-    result = ''
-    try:
-        result = subprocess.check_output(command, shell=True).decode('utf-8').strip()
-    except: ...
+    result = runCmd(command)
+    result = result if result else ''
     return result
 
 # 获取指定服务器内在线人数
@@ -193,3 +203,45 @@ def getPlayers(name: str) -> int:
         if count.isdigit():
             return int(count)
     return 0
+
+# 获取指定服务器内在线玩家列表
+def getPlayerList(name: str) -> dict:
+    captured = runTmuxCmd(f'FreeKill-{name}', 'lsplayer')
+    player_text = captured.rsplit('lsplayer\n', 1)[1]
+    player_dict = {}
+    if re.search(r'Current (.*) online player\(s\)', player_text):
+        for line in player_text.split('\n'):
+            if match := re.search(r' ([0-9]+) , "(.*)"', line):
+                index = match.groups()[0]
+                name = match.groups()[1]
+                player_dict[int(index)] = name
+    return player_dict
+
+# 获取指定服务器内已房间列表
+def getRoomList(name: str) -> dict:
+    captured = runTmuxCmd(f'FreeKill-{name}', 'lsroom')
+    room_text = captured.rsplit('lsroom\n', 1)[1]
+    room_dict = {}
+    if match := re.search(r'Current (.*) running rooms are', room_text):
+        for line in room_text.split('\n'):
+            if match := re.search(r' ([0-9]+) , "(.*)"', line):
+                index = match.groups()[0]
+                name = match.groups()[1]
+                room_dict[int(index)] = name
+    return room_dict
+
+# 向指定服务器发送消息
+def banFromServer(server_name: str, player_name: str) -> bool:
+    captured = runTmuxCmd(f'FreeKill-{server_name}', f'ban {player_name}')
+    result_text = captured.rsplit('ban\n', 1)[1]
+    if re.search(r'Running command:', result_text):
+        return True
+    return False
+
+# 向指定服务器发送消息
+def sendMsgTo(name: str, msg: str) -> bool:
+    captured = runTmuxCmd(f'FreeKill-{name}', f'msg {msg}')
+    result_text = captured.rsplit('msg\n', 1)[1]
+    if re.search(r'Banned', result_text):
+        return True
+    return False

@@ -50,6 +50,33 @@ export function period(now, past, format) {
   return result.trim();
 }
 
+// 对特定格式的时间进行计算
+export function addSecondsToTime(time, add_seconds) {
+  let [days, hours, minutes, seconds] = [0, 0, 0, 0]
+  if(time.match(/^\d+:\d+$/g)) {
+    [minutes, seconds] = time.match(/\d+/g).map(Number);
+  } else if(time.match(/^\d+:\d+:\d+$/g)) {
+    [hours, minutes, seconds] = time.match(/\d+/g).map(Number);
+  } else if(time.match(/^\d+-\d+:\d+:\d+$/g)) {
+    [days, hours, minutes, seconds] = time.match(/\d+/g).map(Number);
+  }
+
+  const total_seconds = (days*24*60*60) + (hours*60*60) + (minutes*60) + seconds;
+  const updated_total_seconds = total_seconds + parseInt(add_seconds);
+  const updated_days = Math.floor(updated_total_seconds / (24*60*60));
+  const updated_hours = Math.floor(updated_total_seconds % (24*60*60) / (60*60)).toString().padStart(2, '0');
+  const updated_minutes = Math.floor(updated_total_seconds % (60*60) / 60).toString().padStart(2, '0');
+  const updated_seconds = Math.floor(updated_total_seconds % 60).toString().padStart(2, '0');
+
+  if(days) {
+    return `${updated_days}-${updated_hours}:${updated_minutes}:${updated_seconds}`;
+  } else if(hours) {
+    return `${updated_hours}:${updated_minutes}:${updated_seconds}`;
+  } else {
+    return `${updated_minutes}:${updated_seconds}`;
+  }
+}
+
 // 获取新月杀最新版本号
 // export function getFreeKillLatestVersion() {
 //   fetch('https://gitee.com/notify-ctrl/FreeKill/releases/latest')
