@@ -1,7 +1,8 @@
 import json
 import time
 
-from src.utils import getProcessRuntime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, getServerList, getServerFromConfig, saveServerToConfig, getPlayers, getFKVersion
+from src.utils import getProcessRuntime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, startGameServer, getServerList, getServerFromConfig, saveServerToConfig, getPlayerList, getRoomList, getPackList, getFKVersion
+from src.connection import Connection
 
 class Server:
     def __init__(self) -> None:
@@ -12,7 +13,7 @@ class Server:
 
         self.ban_words = []
         self.desc = ''
-        self.icon = ''
+        self.icon_url = ''
         self.capacity = 0
         self.temp_ban_time = 0
         self.motd = ''
@@ -22,6 +23,10 @@ class Server:
         self.players = 0
         self.status = '初始化'
         self.version = 'v0.0.1'
+        
+        self.player_dict = {}
+        self.room_dict = {}
+        self.pack_dict = {}
 
     def init(self, name:str, port: int, pid: int = 0, path: str = '') -> None:
         if name == '' or port == '':
@@ -33,21 +38,8 @@ class Server:
             self.path = getProcPathByPid(self.pid)
         elif path:
             self.path = path
-
-        try:
-            json_data : dict = json.load(open(f'{self.path}/freekill.server.config.json'))
-            self.ban_words = json_data.get('banwords', '')
-            self.desc = json_data.get('description', '')
-            self.icon = json_data.get('iconUrl', '')
-            self.capacity = json_data.get('capacity', 0)
-            self.temp_ban_time = json_data.get('tempBanTime', 0)
-            self.motd = json_data.get('motd', '')
-            self.hidden_packs = json_data.get('hiddenPacks', [])
-            self.enable_bots = json_data.get('enableBots', True)
-            self.status = '运行中' if isPortBusy(self.port) else '已停止'
-        except Exception as e:
-            self.status = '配置读取异常'
-
+        if not self.readConfig():
+            return
         try:
             if not self.pid or getProcessRuntime(self.pid) == '0':
                 self.status = '未运行'
@@ -55,7 +47,13 @@ class Server:
         except:
             self.status = '版本读取异常'
 
-    def info(self):
+    def start(self) -> str | None:
+        if pid := startGameServer(self.name, self.port, self.path):
+            self.pid = pid
+            return
+        return '服务器启动失败，该端口可能已被占用'
+
+    def info(self) -> dict:
         runtime = 0
         if not isPortBusy(self.port):
             self.status = '已停止'
@@ -67,15 +65,15 @@ class Server:
                 server_pid = int(server_info[1]) if len(server_info) >=2 else self.pid
                 if self.name == server_name:
                     self.pid = server_pid
-                    self.players = getPlayers(self.name)
                     runtime = getProcessRuntime(self.pid)
                     break
+            self.readPlayers()
 
         return {
             'name': self.name,
             'port': self.port,
             'desc': self.desc,
-            'icon': getImgBase64FromURL(self.icon),
+            'icon': getImgBase64FromURL(self.icon_url),
             'capacity': self.capacity,
             'players': self.players,
             'status': self.status,
@@ -84,10 +82,56 @@ class Server:
             'pid': self.pid,
         }
 
+    def details(self) -> dict:
+        self.readConfig()
+        self.readRooms()
+        self.readPacks()
+        info_dict = self.info()
+        info_dict = {
+            **info_dict, 
+            'ban_words': self.ban_words,
+            'motd': self.motd,
+            'temp_ban_time': self.temp_ban_time,
+            'hidden_packs': self.hidden_packs,
+            'enable_bots': self.enable_bots,
+            'all_packs': self.pack_dict,
+            'room_list': self.room_dict,
+            'player_list': self.player_dict,
+        }
+        return info_dict
+
+    def readConfig(self) -> bool:
+        try:
+            json_data : dict = json.load(open(f'{self.path}/freekill.server.config.json'))
+            self.ban_words = json_data.get('banwords', [])
+            self.desc = json_data.get('description', '')
+            self.icon_url = json_data.get('iconUrl', '')
+            self.capacity = json_data.get('capacity', 0)
+            self.temp_ban_time = json_data.get('tempBanTime', 0)
+            self.motd = json_data.get('motd', '')
+            self.hidden_packs = json_data.get('hiddenPacks', [])
+            self.enable_bots = json_data.get('enableBots', True)
+            self.status = '运行中' if isPortBusy(self.port) else '已停止'
+            return True
+        except Exception as e:
+            self.status = '配置读取异常'
+            return False
+
+    def readPlayers(self) -> None:
+        self.player_dict = getPlayerList(self.name)
+        self.players = len(self.player_dict)
+
+    def readRooms(self) -> None:
+        self.room_dict = getRoomList(self.name)
+
+    def readPacks(self) -> None:
+        self.pack_dict = getPackList(self.name)
+
 class ServerList:
     def __init__(self) -> None:
         self.dict = {}
         self.list: list[Server | None] = []
+        self.connection: Connection | None
         self.latest_fk_version = ''
         self.version_check_timestamp = 0
         

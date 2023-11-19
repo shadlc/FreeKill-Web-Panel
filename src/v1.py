@@ -1,7 +1,8 @@
 import re
+import time
 from flask_classful import FlaskView, route, request
 
-from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, writeGameConfig, isFileExists
+from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, writeGameConfig, isFileExists, runTmuxCmd, appendFile
 from src.game_server import Server, ServerList
 
 class V1API(FlaskView):
@@ -14,13 +15,44 @@ class V1API(FlaskView):
     def index(self):
         return 'V1 API'
 
-    @route('servers')
+    @route('servers', methods=['GET'])
     def servers(self):
         server_dict_list = []
         list = self.server_list.getList()
         for server in list:
             server_dict_list.append(server.info())
         return restful(200, '', {'list': server_dict_list})
+
+    @route('details', methods=['POST'])
+    def details(self):
+        name = request.json.get('name', '')
+        for server in self.server_list.list:
+            if server.name == name:
+                info_dict = server.details()
+                return restful(200, '', info_dict)
+        return restful(404, '未找到该服务器')
+
+    @route('execute', methods=['POST'])
+    def execute(self):
+        name = request.json.get('name', '')
+        cmd = request.json.get('cmd', '')
+        for char in ['`', '"', '$']:
+            cmd = cmd.replace(char, f'\\{char}')
+        list = self.server_list.getList()
+        for server in list:
+            if server.name == name:
+                if cmd == 'start' and not isPortBusy(server.port):
+                    appendFile(f'{server.path}/fk-latest.log', '\x02')
+                    time.sleep(0.1)
+                    error = server.start()
+                    if error:
+                        return restful(400, error)
+                    self.server_list.connection.set(server.name, 'path', server.path)
+                    return restful(200, '服务器启动成功')
+                else:
+                    runTmuxCmd(f'FreeKill-{name}', cmd)
+                    return restful(200, '')
+        return restful(404, '未找到该服务器')
     
     @route('add_server', methods=['POST'])
     def add_server(self):
@@ -81,21 +113,22 @@ class V1API(FlaskView):
 
     @route('start_server', methods=['GET'])
     def restart_server(self):
-        server_name = request.args.get('name', '').strip()
+        server_name = request.args.get('name', '')
         list = self.server_list.getList()
         for server in list:
             if server.name == server_name:
                 if isPortBusy(server.port):
                     return restful(400, '服务器已经在运行中')
-                elif pid := startGameServer(server.name, server.port, server.path):
-                    server.pid = pid
-                    return restful(200, '服务器启动成功')
+                error = server.start()
+                if error:
+                    return restful(400, error)
+                return restful(200, '服务器启动成功')
 
         return restful(400, '服务器启动失败，该端口可能已被占用')
 
     @route('stop_server', methods=['GET'])
     def stop_server(self):
-        server_name = request.args.get('name', '').strip()
+        server_name = request.args.get('name', '')
         list = self.server_list.getList()
         for server in list:
             if not isPortBusy(server.port):
@@ -107,7 +140,7 @@ class V1API(FlaskView):
 
     @route('del_server', methods=['GET'])
     def del_server(self):
-        server_name = request.args.get('name', '').strip()
+        server_name = request.args.get('name', '')
         list = self.server_list.getList()
         for server in list:
             if server.name == server_name:
@@ -123,12 +156,12 @@ class V1API(FlaskView):
 
     @route('check_version', methods=['GET'])
     def del_server(self):
-        check_type = request.args.get('type', '').strip()
+        check_type = request.args.get('type', '')
         if check_type == 'FreeKill':
             version = self.server_list.checkFKVersion();
             if version:
                 return restful(200, '', {'version': version})
             else:
-                return restful(400, f'获取FreeKill最新版本号时发生网络错误')
+                return restful(400, f'获取FreeKill最新版本号时发生网络错误', {'version': '未知版本'})
 
         return restful(404, '无法解析该请求')

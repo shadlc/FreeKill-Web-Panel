@@ -66,7 +66,7 @@ function render_server_list(servers){
     <div id="server`+info.pid+`" class="server-item">
         <img class="server-icon" src="`+info.icon+`" />
         <div class="server-info">
-            <a class="server-link" href="control/`+info.pid+`">
+            <a class="server-link" href="control/`+info.name+`">
                 <h2 class="server-name">`+info.name+`</h2>
                 <p1 class="server-desc">`+info.desc+`</p1>
                 <span class="server-pid">`+info.pid+`</span>
@@ -138,7 +138,7 @@ function initServerToggleBtn() {
     menu.querySelectorAll('span').forEach(function(span) {
       span.addEventListener('click', ()=>{
         if(span.innerText.includes('详情')) {
-          window.open('control/'+server_pid);
+          window.open('control/'+server_name);
         } else if(span.innerText.includes('启动')) {
           start_server(server_name, server_pid);
         } else if(span.innerText.includes('停止')) {
@@ -197,7 +197,7 @@ function add_server(callback) {
     body: JSON.stringify(data)
   }).then(res => res.json())
     .then(data => {
-      showDialog(data. msg, '提示', ()=>{
+      showDialog(data.msg, '提示', ()=>{
         if(data.retcode == 0) {
           refresh_servers();
           document.getElementById('add_modal').style.display = 'none';

@@ -6,37 +6,118 @@
 	<meta name="viewport"
 		content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover" />
 	<title>新月杀控制面板</title>
-	<link rel="shortcut icon" href="favicon.png"/>
-	<link rel="apple-touch-icon" href="favicon.png" />
-    <link rel="stylesheet" href="../lib/css/style.css"/>
+	<link rel="shortcut icon" href="../lib/favicon.png"/>
+	<link rel="apple-touch-icon" href="../lib/favicon.png" />
+  <link rel="stylesheet" href="../lib/css/style.css"/>
 </head>
 
 <body class="center">
     <div class="container">
         <div id="header">
-            <span id="back_btn" class="btn"><i class="bi">&#xF12F;</i></span>
-            <h1 id="title"><a href="javascript:history.back();">新月杀控制面板</a></h1>
+            <span id="back_btn" class="btn btn-shadow"><i class="bi">&#xF12F;</i></span>
+            <span id="refresh_btn" class="btn btn-shadow" ><i class="bi">&#xF116;</i></span>
+            <h1 id="title"><img id="server_icon" /><a href="javascript:history.back();"></a></h1>
             <div id="color_scheme"></div>
         </div>
     </div>
-    <div id="server_control" class="main container">
-        <h2 id="empty_text">Control page is building~</h2>
+    <div id="control" class="main container vertical-center">
+        <h2 id="empty_text">Control page is loading~</h2>
+        <div class="terminal terminal-small">
+            <div class="terminal-btn">▼</div>
+            <div class="terminal-screen"></div>
+            <div class="terminal-input">
+                <input type="text"></input>
+            </div>
+            <div class="terminal-cover center">
+                <span>已断开连接...</span>
+            </div>
+        </div>
+        <div class="server-panel">
+            <div class="server-detail">
+            <div id="server_name_div" class="capsule-box" title="服务器名称">
+                <img id="server_icon" />
+                <span>名称</span>
+                <span id="server_name"></span>
+            </div>
+            <div class="capsule-box" title="服务器版本">
+                <i class="bi">&#xF69D;</i>
+                <span>版本</span>
+                <span id="server_version"></span>
+                <i class="bi">&#xF69D;</i>
+                <span>最新</span>
+                <span id="latest_version">
+                <i class="bi rotate"><b>&#xF130;</b></i>
+                </span>
+            </div>
+            <div class="capsule-box" title="服务器简介，显示在加入服务器界面的那行文字">
+                <i class="bi">&#xF228;</i>
+                <span>简介</span>
+                <span id="server_desc"></span>
+            </div>
+            <div class="capsule-box" title="用户进入大厅时候在屏幕右侧看到的文字，支持 markdown 格式">
+                <i class="bi">&#xF484;</i>
+                <span>公告</span>
+                <span id="server_motd"></span>
+            </div>
+            <div class="capsule-box" title="服务器端口号">
+                <i class="bi">&#xF6D5;</i>
+                <span>端口号</span>
+                <span id="server_port"></span>
+            </div>
+            <div class="capsule-box" title="服务器进程号">
+                <i class="bi">&#xF5C3;</i>
+                <span>进程号</span>
+                <span id="server_pid"></span>
+            </div>
+            <div class="capsule-box" title="是否启用机器人">
+                <i class="bi">&#xF6B1;</i>
+                <span>机器人</span>
+                <span id="server_enable_bots"></span>
+            </div>
+            <div class="capsule-box" title="临时封禁时长">
+                <i class="bi">&#xF6B6;</i>
+                <span>临时封禁</span>
+                <span id="server_temp_ban_time"></span>
+            </div>
+            <div class="capsule-box" title="运行时长">
+                <i class="bi">&#xF293;</i>
+                <span>运行时长</span>
+                <span id="server_time"></span>
+            </div>
+            </div>
+            <div class="server-control">
+                <div class="btn btn-shadow">更新</div>
+                <div class="btn btn-shadow">启动</div>
+                <div class="btn btn-shadow">关闭</div>
+                <div class="btn btn-shadow">重启</div>
+                <div class="btn btn-shadow">配置</div>
+            </div>
+            <div class="player_list">
+                <h2 id="empty_text">玩家列表为空</h2>
+            </div>
+            <div class="room_list">
+                <h2 id="empty_text">房间列表为空</h2>
+            </div>
+            <div class="pack_list">
+                <h2 id="empty_text">扩充包列表为空</h2>
+            </div>
+        </div>
     </div>
     <footer>
         <span><a href="https://github.com/shadlc/FreeKill-Web-Panel" title="FreeKill-Web-Panel" target="_blank"><u>FKWP</u></a></span>
         <span>made by <a href="mailto:i@shadlc.net" title="i@shadlc.net"><u>Shadlc</u></a></span>
     </footer>
 </body>
+    <script src="../lib/js/socket.io.min.js"></script>  
     <script type="module" src="../lib/js/control.js"></script>
     <script>
         document.addEventListener('keydown', (e)=>{
           if(e.key == 'Escape') {
               document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());
           } else if(e.key == 'Enter') {
-              document.querySelectorAll('#msg_dialog_confirm_btn').forEach((e)=>e.click());
+            document.querySelectorAll('#msg_dialog_confirm_btn').forEach((e)=>e.click());
           }
         });
-        
         document.getElementById("back_btn").addEventListener("click", ()=>{
           window.history.back();
         });

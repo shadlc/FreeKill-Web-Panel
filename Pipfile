@@ -10,6 +10,8 @@ flask-socketio = "*"
 flask-classful = "*"
 requests = "*"
 chardet = "*"
+gevent = "*"
+gevent-websocket = "*"
 
 [dev-packages]
 

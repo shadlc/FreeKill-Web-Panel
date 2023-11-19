@@ -1,4 +1,5 @@
 import re
+import sys
 import json
 import time
 import base64
@@ -6,6 +7,7 @@ import requests
 import subprocess
 
 from flask import jsonify
+from src.connection import Connection
 
 config_file = f'./config.json'
 
@@ -35,7 +37,7 @@ def getFKVersion() -> str | None:
 
 # 从指定PID进程获取其运行时长
 def getProcessRuntime(pid: int) -> str:
-    command = f"ps -p {pid} -o etime="
+    command = f'ps -p {pid} -o etime='
     runtime = '0'
     try:
         runtime = subprocess.check_output(command, shell=True).decode('utf-8').strip()
@@ -53,19 +55,20 @@ def getVersionFromPath(path: str) -> str:
         match = re.search(pattern, content)
         if match:
             version = match.group()
-            return version
+            return f'v{version}'
     except:...
     return ''
 
 # 运行Bash指令并获取结果
 def runCmd(cmd: str) -> str | None:
-    # stime = time.time()
+    stime = time.time()
     try:
         result = subprocess.check_output(cmd, shell=True).decode('utf-8').strip()
     except:
         return None
-    # etime = time.time()
-    # print(f'执行指令 {cmd}\n耗时:{round(etime - stime, 3)}')
+    etime = time.time()
+    if '--debug' in sys.argv[1:]:
+        print(f' >>> 执行指令 {cmd} \n >>> 耗时:{round(etime - stime, 3)}')
     return result
 
 # 获取正在运行的FreeKill服务器列表以及其信息
@@ -73,19 +76,19 @@ def getServerList() -> list[str]:
     command = ''' ps -ef | grep -E '\?.*tmux\s+.*FreeKill-.*FreeKill -s' | awk '{print $12" "$2" "$15}' '''
     result = runCmd(command)
     server_list = result if result else ''
-    server_list = [i.split(" ") for i in [j for j in server_list.split("\n")]]
+    server_list = [i.split(' ') for i in [j for j in server_list.split('\n')]]
     for i in server_list:
         if i == ['']: continue
         i[0] = i[0].replace('FreeKill-', '')
-        i[1] = int(i[1]) + 1
+        i[1] = int(i[1]) + 3
     return server_list
 
 # 通过PID获取程序的执行路径
 def getProcPathByPid(pid: int) -> str:
-    command = f"readlink /proc/{pid}/exe"
+    command = f'readlink /proc/{pid}/exe'
     result = runCmd(command)
     path = result if result else ''
-    path = path.rsplit("/", 1)[0].rstrip("build").rstrip("/")
+    path = path.rsplit('/', 1)[0].rstrip('build').rstrip('/')
     return path
 
 # 通过PID获取程序的监听端口
@@ -93,7 +96,7 @@ def getProcPortByPid(pid: int) -> int:
     command = '''netstat -tlnp 2>/dev/null | grep ''' + str(pid) + ''' | awk '{print $4}' '''
     result = runCmd(command)
     port = result if result else ''
-    port = port.rsplit(":").pop()
+    port = port.rsplit(':').pop()
     if port.isdigit():
         return int(port)
     else:
@@ -101,7 +104,7 @@ def getProcPortByPid(pid: int) -> int:
 
 # 判断端口号是否是被占用
 def isPortBusy(port: int) -> bool:
-    command = f"lsof -i:{port}"
+    command = f'netstat -tlnp 2>/dev/null | grep :{port}'
     if runCmd(command):
         return True
     return False
@@ -142,14 +145,18 @@ def restful(code: int, msg: str = '', data: dict = {}) -> None:
 
 # 启动服务器,返回PID
 def startGameServer(name: str, port: int, path: str) -> int:
-    command = f''' cd {path};tmux new -d -s "FreeKill-{name}" "./FreeKill -s {port}" '''
+    command = f''' cd {path};tmux new -d -s "FreeKill-{name}" "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
     subprocess.Popen([command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).wait()
     command = ''' ps -ef | grep -E '\?.*tmux\s+.*FreeKill-''' + name + ''' ' | awk '{print $2}' '''
-    result = runCmd(command)
-    if result.isdigit():
-        return int(result)
-    else:
-        return 0
+    result = ''
+    attempt = 0
+    while not result and attempt <= 3:
+        result = runCmd(command)
+        if result.isdigit():
+            return int(result)
+        time.sleep(1)
+        attempt += 1
+    return 0 
 
 # 停止服务器
 def stopGameServer(name: str) -> bool:
@@ -197,7 +204,7 @@ def runTmuxCmd(tid: str, cmd: str) -> str:
 # 获取指定服务器内在线人数
 def getPlayers(name: str) -> int:
     captured = runTmuxCmd(f'FreeKill-{name}', 'lsplayer')
-    player_text = captured.rsplit('lsplayer\n', 1)[1]
+    player_text = captured.rsplit('lsplayer\n', 1)[1] if captured else ''
     if match := re.search(r'Current (.*) online player\(s\)', player_text):
         count = match.groups()[0]
         if count.isdigit():
@@ -207,7 +214,7 @@ def getPlayers(name: str) -> int:
 # 获取指定服务器内在线玩家列表
 def getPlayerList(name: str) -> dict:
     captured = runTmuxCmd(f'FreeKill-{name}', 'lsplayer')
-    player_text = captured.rsplit('lsplayer\n', 1)[1]
+    player_text = captured.rsplit('lsplayer\n', 1)[1] if captured else ''
     player_dict = {}
     if re.search(r'Current (.*) online player\(s\)', player_text):
         for line in player_text.split('\n'):
@@ -220,7 +227,7 @@ def getPlayerList(name: str) -> dict:
 # 获取指定服务器内已房间列表
 def getRoomList(name: str) -> dict:
     captured = runTmuxCmd(f'FreeKill-{name}', 'lsroom')
-    room_text = captured.rsplit('lsroom\n', 1)[1]
+    room_text = captured.rsplit('lsroom\n', 1)[1] if captured else ''
     room_dict = {}
     if match := re.search(r'Current (.*) running rooms are', room_text):
         for line in room_text.split('\n'):
@@ -230,7 +237,11 @@ def getRoomList(name: str) -> dict:
                 room_dict[int(index)] = name
     return room_dict
 
-# 向指定服务器发送消息
+# 获取指定服务器扩充包
+def getPackList(name: str) -> dict:
+    ...
+
+# 向指定服务器封禁玩家
 def banFromServer(server_name: str, player_name: str) -> bool:
     captured = runTmuxCmd(f'FreeKill-{server_name}', f'ban {player_name}')
     result_text = captured.rsplit('ban\n', 1)[1]
@@ -245,3 +256,70 @@ def sendMsgTo(name: str, msg: str) -> bool:
     if re.search(r'Banned', result_text):
         return True
     return False
+
+# 去除特殊控制字符
+def rmSpecialChar(text: str) -> str:
+    special_chars = ['[?2004l', '[?2004h', '\x1b[K', '\x1b']
+    for char in special_chars:
+        text = text.replace(char, '')
+    return text
+
+# 获取指定文件倒数行数的文本
+def tailLogNum(file_path: str, num: int) -> str:
+    try:
+        with open(file_path) as file:
+            lines = file.readlines()
+            last_lines = lines[-num:]
+            text = ''
+            for line in last_lines:
+                if rmSpecialChar(line).strip():
+                    text += line
+            text = rmSpecialChar(text)
+            return text
+    except:
+        return ''
+
+# 根据连接客户端实时获取执行日志
+def tailLog(conn: Connection, sid: str) -> None:
+    try:
+        date = time.strftime('%m/%d %H:%M:%S', time.localtime())
+        path = ''
+        server_list = getServerList()
+        for server in server_list:
+            if conn.clients[sid].get('name') == server[0]:
+                path = getProcPathByPid(server[1])
+
+        if conn.clients[sid] == '0' or path == '':
+            conn.socketio.emit('log', {'text': f'{date} FKWP [[0;32mI[0;0m] 服务器未启动，输入指令[0;33m start [0;0m启动服务器\n'})
+        while conn.contains(sid) and not path and not conn.clients[sid].get('path'):
+            time.sleep(0.1)
+            continue
+        if temp_path := conn.clients[sid].get('path'):
+            path = temp_path
+
+        log_file = f'{path}/fk-latest.log'
+        conn.socketio.emit('log', {'text': tailLogNum(log_file, 100), 'history': True})
+        with open(log_file) as f:
+            f.seek(0, 2)
+            while conn.contains(sid):
+                line = rmSpecialChar(f.readline())
+                if not line:
+                    time.sleep(0.1)
+                    continue
+                elif line == '\x02':
+                    conn.socketio.emit('log', {'text': f'{date} FKWP [[0;32mI[0;0m] 正在启动中...\n'})
+                    time.sleep(0.5)
+                    f = open(log_file)
+                elif re.match(r'^(\n|\^@|\x07|\x02)*$', line):
+                    continue
+                else:
+                    conn.socketio.emit('log', {'text': line})
+    except Exception as e:
+        conn.socketio.emit('log', {'text': f'{date} FKWP [[0;32mI[0;0m] 读取日志异常: {e}\n'})
+
+# 根据文件名添加额外内容
+def appendFile(path: str, content: str) -> str | None:
+    try:
+        open(path, mode='a').write(content)
+    except Exception as e:
+        return f'写入错误：{e}'

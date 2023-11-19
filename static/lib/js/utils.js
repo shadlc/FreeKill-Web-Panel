@@ -77,7 +77,45 @@ export function addSecondsToTime(time, add_seconds) {
   }
 }
 
-// 获取新月杀最新版本号
+// 转换BASH颜色为HTML实体
+export function convertBashColor(text) {
+  text = text.replace(/\[([0-9]{1,2}(;[0-9]{1,2})?)?m/g, (match, patten) => {
+    let classes = '';
+    if (patten) {
+      if(patten == '0;0') {
+        return '</span>';
+      }
+      let codes = patten.split(';');
+        for (let i = 0; i < codes.length; i++) {
+          let code = parseInt(codes[i]);
+            switch (code) {
+              case 30: classes += 'black'; break;
+              case 31: classes += 'red'; break;
+              case 32: classes += 'green'; break;
+              case 33: classes += 'yellow'; break;
+              case 34: classes += 'blue'; break;
+              case 35: classes += 'magenta'; break;
+              case 36: classes += 'cyan'; break;
+              case 37: classes += 'white'; break;
+              case 40: classes += 'bg-black'; break;
+              case 41: classes += 'bg-red'; break;
+              case 42: classes += 'bg-green'; break;
+              case 43: classes += 'bg-yellow'; break;
+              case 44: classes += 'bg-blue'; break;
+              case 45: classes += 'bg-magenta'; break;
+              case 46: classes += 'bg-cyan'; break;
+              case 47: classes += 'bg-white'; break;
+              default: break;
+            }
+            classes += ' '; // add space between classes
+        }
+      }
+      return '<span class="' + classes.trim() + '">';
+  });
+  return text;
+}
+
+// 获取新月杀最新版本号(域名不一致，不可实现)
 // export function getFreeKillLatestVersion() {
 //   fetch('https://gitee.com/notify-ctrl/FreeKill/releases/latest')
 //   .then(response => {
