@@ -19,14 +19,16 @@
 - **网页操作新月杀服务器终端**
 - ~~**一键更新新月杀服务器**~~ (TODO)
 - ~~**修改月杀服务器参数与配置**~~ (TODO)
-- ~~**前端展示玩家列表、房间列表、扩展包列表**~~ (TODO)
+- ~~**前端展示与控制玩家列表、房间列表、扩展包列表**~~ (TODO)
 
 ## 📸 相关截图
 
 <div align=center>
 <img src="https://github.com/shadlc/FreeKill-Web-Panel/assets/46913095/9c075b65-ca20-4cc1-adb6-f43215fca346" width=70%>
 </div>
-
+<div align=center>
+<img src="https://github.com/shadlc/FreeKill-Web-Panel/assets/46913095/84bd2301-10f1-4603-98fc-84db01a80eca" width=70%>
+</div>
 
 ## 📝 使用指南
 - **首先确保你安装了 Python3.11、tmux、git**

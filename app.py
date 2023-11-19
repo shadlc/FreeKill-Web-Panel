@@ -1,5 +1,3 @@
-import eventlet
-
 from platform import system
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
@@ -9,12 +7,13 @@ from src.v1 import V1API
 from src.game_server import ServerList
 from src.connection import Connection
 
-eventlet.monkey_patch()
 app = Flask(__name__, static_folder='static', static_url_path='/')
 app.json.ensure_ascii = False
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode='gevent')
+
 conn = Connection(socketio)
 server_list = ServerList()
+server_list.connection = conn
 
 @app.route('/')
 def index():
@@ -28,7 +27,7 @@ def control(name: str):
 def connect():
     name = request.args.get('name', '')
     if not conn.contains(request.sid):
-        conn.add(request.sid, {'name': name, 'path': ''})
+        conn.add(request.sid, name, '')
         socketio.start_background_task(tailLog, conn, request.sid)
 
 @socketio.on('disconnect')
@@ -43,4 +42,4 @@ if __name__ == '__main__':
     else:
         V1API.register(app, route_base='/v1')
         V1API.server_list = server_list
-        socketio.run(app, '127.0.0.1', 9500)
+        socketio.run(app, '127.0.0.1', 9500, debug=True)
