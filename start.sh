@@ -7,12 +7,7 @@ else
     exit 1
 fi
 
-if pipenv graph > /dev/null 2>&1; then
-    pipenv run python ./app.py
-else
-    echo -e "\033[34m\n 检测到未初始化环境\n\033[0m"
-    echo -e "\033[32m\n 正在初始化 ... \n\033[0m"
-    pipenv install
-    echo -e "\033[32m\n 初始化环境完毕 ... \n\033[0m"
-    pipenv run python ./app.py
-fi
+echo -e "\033[32m\n 正在同步环境 ... \n\033[0m"
+pipenv install
+echo -e "\033[32m\n 环境同步完毕 ... \n\033[0m"
+pipenv run python ./app.py
