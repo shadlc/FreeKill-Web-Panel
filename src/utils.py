@@ -74,13 +74,23 @@ def runCmd(cmd: str) -> str | None:
 # 获取正在运行的FreeKill服务器列表以及其信息
 def getServerList() -> list[str]:
     command = ''' ps -ef | grep -E '\?.*tmux\s+.*FreeKill-.*FreeKill -s' | awk '{print $12" "$2" "$15}' '''
-    result = runCmd(command)
-    server_list = result if result else ''
+    running = runCmd(command)
+    server_list = running if running else ''
+
+    command = ''' ps -ef | grep  -vE '(tee|grep)' | grep -E './FreeKill -s' | awk '{print $10" "$2}' '''
+    port_pid = runCmd(command)
+    port_pid_list = port_pid if port_pid else ''
+
+    port_pid_list = [i.split(' ') for i in [j for j in port_pid.split('\n')]]
+    port_pid_dict = {}
+    for item in port_pid_list:
+        port_pid_dict[item[0]] = item[1]
     server_list = [i.split(' ') for i in [j for j in server_list.split('\n')]]
     for i in server_list:
         if i == ['']: continue
         i[0] = i[0].replace('FreeKill-', '')
-        i[1] = int(i[1]) + 3
+        if i[2] in port_pid_dict:
+            i[1] = int(port_pid_dict[i[2]])
     return server_list
 
 # 通过PID获取程序的执行路径
@@ -147,7 +157,7 @@ def restful(code: int, msg: str = '', data: dict = {}) -> None:
 def startGameServer(name: str, port: int, path: str) -> int:
     command = f''' cd {path};tmux new -d -s "FreeKill-{name}" "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
     subprocess.Popen([command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).wait()
-    command = ''' ps -ef | grep -E '\?.*tmux\s+.*FreeKill-''' + name + ''' ' | awk '{print $2}' '''
+    command = ''' ps -ef | grep -v 'tee' | grep -E './FreeKill -s ''' + port + ''' ' | awk '{print $2}' '''
     result = ''
     attempt = 0
     while not result and attempt <= 3:
