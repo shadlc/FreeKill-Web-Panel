@@ -84,13 +84,14 @@ def getServerList() -> list[str]:
     port_pid_list = [i.split(' ') for i in [j for j in port_pid.split('\n')]]
     port_pid_dict = {}
     for item in port_pid_list:
+        if item == ['']: continue
         port_pid_dict[item[0]] = item[1]
     server_list = [i.split(' ') for i in [j for j in server_list.split('\n')]]
-    for i in server_list:
-        if i == ['']: continue
-        i[0] = i[0].replace('FreeKill-', '')
-        if i[2] in port_pid_dict:
-            i[1] = int(port_pid_dict[i[2]])
+    for item in server_list:
+        if item == ['']: continue
+        item[0] = item[0].replace('FreeKill-', '')
+        if item[2] in port_pid_dict:
+            item[1] = int(port_pid_dict[item[2]])
     return server_list
 
 # 通过PID获取程序的执行路径
