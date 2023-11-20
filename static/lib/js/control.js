@@ -1,4 +1,4 @@
-import { setScheme, showDialog, convertBashColor, addSecondsToTime } from './utils.js';
+import { setScheme, showDialog, convertBashColor, addSecondsToTime, formatSize } from './utils.js';
 
 // 主题相关
 const themeScheme = window.matchMedia('(prefers-color-scheme: light)');
@@ -49,10 +49,8 @@ document.querySelector('#title a').innerText = name;
 // 实时监控终端
 let screen = document.querySelector('.terminal-screen');
 let cover = document.querySelector('.terminal-cover');
-let socket = io.connect(base_url, {
-  query: "name="+name
-});
-socket.on('log', function(data) {
+let terminal_socket = io.connect(base_url+'?type=terminal&name='+name);
+terminal_socket.on('terminal', function(data) {
   cover.style.display = 'none';
   if(data.history) {
     let text = convertBashColor(data.text);
@@ -73,12 +71,17 @@ socket.on('log', function(data) {
   } else {
     screen.innerHTML += convertBashColor(data.text);
   }
+  if(data.start) {
+    setTimeout(() => {
+      refreshDetails();
+    }, 1000);
+  }
   screen.scrollTop = screen.scrollHeight - screen.clientHeight;
 });
-socket.on('disconnect', () => {
+terminal_socket.on('disconnect', () => {
   cover.style.display = 'inherit';
 });
-socket.on('connect_error', function() {
+terminal_socket.on('connect_error', function() {
   cover.style.display = 'inherit';
 });
 
@@ -171,24 +174,27 @@ function getDetailInfo(callback) {
       showDialog(error, '请求出错');
   })
 }
-getDetailInfo((info)=>{
-  console.log(info);
-  if(info.icon) {
-    document.querySelectorAll('#server_icon').forEach((e)=>{
-      e.src = info.icon;
-      e.style.display = 'inline-block';
-    });
-  }
-  document.getElementById('server_name').innerHTML = info.name;
-  document.getElementById('server_version').innerHTML = info.version;
-  document.getElementById('server_desc').innerHTML = info.desc;
-  document.getElementById('server_motd').innerHTML = info.motd;
-  document.getElementById('server_port').innerHTML = info.port;
-  document.getElementById('server_pid').innerHTML = info.pid;
-  document.getElementById('server_enable_bots').innerHTML = info.enable_bots?'启用':'禁用';
-  document.getElementById('server_temp_ban_time').innerHTML = info.temp_ban_time + '分钟';
-  document.getElementById('server_time').innerHTML = info.runtime;
-});
+function refreshDetails() {
+  getDetailInfo((info)=>{
+    console.log(info);
+    if(info.icon) {
+      document.querySelectorAll('#server_icon').forEach((e)=>{
+        e.src = info.icon;
+        e.style.display = 'inline-block';
+      });
+    }
+    document.getElementById('server_name').innerHTML = info.name;
+    document.getElementById('server_version').innerHTML = info.version;
+    document.getElementById('server_desc').innerHTML = info.desc;
+    document.getElementById('server_motd').innerHTML = info.motd;
+    document.getElementById('server_port').innerHTML = info.port;
+    document.getElementById('server_pid').innerHTML = info.pid;
+    document.getElementById('server_enable_bots').innerHTML = info.enable_bots?'启用':'禁用';
+    document.getElementById('server_temp_ban_time').innerHTML = info.temp_ban_time + '分钟';
+    document.getElementById('server_time').innerHTML = info.runtime;
+  });
+}
+refreshDetails();
 
 
 // 获取FreeKill最新版本
@@ -208,4 +214,14 @@ function getLatestVersion(callback) {
 }
 getLatestVersion((version)=>{
   document.getElementById('latest_version').innerHTML = version;
+});
+
+// 实时获取服务器CPU与内存占用
+let perf_socket = io.connect(base_url+'?type=perf&name='+name);
+perf_socket.on('perf', function(data) {
+  if(data.data) {
+    document.getElementById('server_cpu').innerHTML = data.data.cpu;
+    document.getElementById('server_ram').innerHTML
+      = /^\d+$/.test(data.data.ram)?formatSize(data.data.ram*1000):data.data.ram;
+  }
 });

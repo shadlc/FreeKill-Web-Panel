@@ -77,7 +77,7 @@ def getServerList() -> list[str]:
     running = runCmd(command)
     server_list = running if running else ''
 
-    command = ''' ps -ef | grep  -vE '(tee|grep)' | grep -E './FreeKill -s' | awk '{print $10" "$2}' '''
+    command = ''' ps -ef | grep -vE '(tee|grep)' | grep './FreeKill -s' | awk '{print $10" "$2}' '''
     port_pid = runCmd(command)
     port_pid_list = port_pid if port_pid else ''
 
@@ -104,7 +104,7 @@ def getProcPathByPid(pid: int) -> str:
 
 # 通过PID获取程序的监听端口
 def getProcPortByPid(pid: int) -> int:
-    command = '''netstat -tlnp 2>/dev/null | grep ''' + str(pid) + ''' | awk '{print $4}' '''
+    command = ''' netstat -tlnp 2>/dev/null | grep ''' + str(pid) + ''' | awk '{print $4}' '''
     result = runCmd(command)
     port = result if result else ''
     port = port.rsplit(':').pop()
@@ -158,7 +158,7 @@ def restful(code: int, msg: str = '', data: dict = {}) -> None:
 def startGameServer(name: str, port: int, path: str) -> int:
     command = f''' cd {path};tmux new -d -s "FreeKill-{name}" "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
     subprocess.Popen([command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).wait()
-    command = ''' ps -ef | grep -v 'tee' | grep -E './FreeKill -s ''' + port + ''' ' | awk '{print $2}' '''
+    command = ''' ps -ef | grep -vE '(tee|grep)' | grep './FreeKill -s ''' + str(port) + '''' | awk '{print $2}' '''
     result = ''
     attempt = 0
     while not result and attempt <= 3:
@@ -300,8 +300,8 @@ def tailLog(conn: Connection, sid: str) -> None:
             if conn.clients[sid].get('name') == server[0]:
                 path = getProcPathByPid(server[1])
 
-        if conn.clients[sid] == '0' or path == '':
-            conn.socketio.emit('log', {'text': f'{date} FKWP [[0;32mI[0;0m] 服务器未启动，输入指令[0;33m start [0;0m启动服务器\n'})
+        if path == '':
+            conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;32mI[0;0m] 服务器未启动，输入指令[0;33m start [0;0m启动服务器\n'})
         while conn.contains(sid) and not path and not conn.clients[sid].get('path'):
             time.sleep(0.1)
             continue
@@ -309,7 +309,7 @@ def tailLog(conn: Connection, sid: str) -> None:
             path = temp_path
 
         log_file = f'{path}/fk-latest.log'
-        conn.socketio.emit('log', {'text': tailLogNum(log_file, 100), 'history': True})
+        conn.socketio.emit('terminal', {'text': tailLogNum(log_file, 100), 'history': True})
         with open(log_file) as f:
             f.seek(0, 2)
             while conn.contains(sid):
@@ -318,15 +318,15 @@ def tailLog(conn: Connection, sid: str) -> None:
                     time.sleep(0.1)
                     continue
                 elif line == '\x02':
-                    conn.socketio.emit('log', {'text': f'{date} FKWP [[0;32mI[0;0m] 正在启动中...\n'})
+                    conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;32mI[0;0m] 正在启动中...\n', 'start': True})
                     time.sleep(0.5)
                     f = open(log_file)
                 elif re.match(r'^(\n|\^@|\x07|\x02)*$', line):
                     continue
                 else:
-                    conn.socketio.emit('log', {'text': line})
+                    conn.socketio.emit('terminal', {'text': line})
     except Exception as e:
-        conn.socketio.emit('log', {'text': f'{date} FKWP [[0;32mI[0;0m] 读取日志异常: {e}\n'})
+        conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;32mI[0;0m] 读取日志异常: {e}\n'})
 
 # 根据文件名添加额外内容
 def appendFile(path: str, content: str) -> str | None:
@@ -334,3 +334,30 @@ def appendFile(path: str, content: str) -> str | None:
         open(path, mode='a').write(content)
     except Exception as e:
         return f'写入错误：{e}'
+
+# 持续返回性能参数
+def queryPerf(conn: Connection, sid: str) -> None:
+    try:
+        for server_info in getServerList():
+            name = conn.clients[sid].get('name')
+            if name == server_info[0]:
+                conn.set('perf', name, 'pid', server_info[1])
+                break
+        if not conn.clients[sid].get('pid'):
+            conn.socketio.emit('perf', {'data': {'cpu': '请求失败', 'ram': '请求失败'}})
+        while conn.contains(sid):
+            cpu, ram = getPerfByPid(conn.clients[sid].get('pid'))
+            conn.socketio.emit('perf', {'data': {'cpu': cpu, 'ram': ram}})
+            time.sleep(2)
+    except Exception as e:
+        conn.socketio.emit('perf', {'data': {'cpu': '获取异常', 'ram': '获取异常'}})
+    ...
+
+def getPerfByPid(pid: int) -> list:
+    command = ''' ps -up ''' + str(pid) + ''' --no-header | awk '{print $3"% "$6}' '''
+    result = runCmd(command)
+    perf = result if result else ''
+    perf_list = perf.split(' ')
+    if len(perf_list) < 2:
+        return '0.0%', '0MB'
+    return perf_list

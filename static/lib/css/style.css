@@ -610,6 +610,37 @@ footer {
     border-left: none;
     width: 4rem;
 }
+.server-control {
+    display: flex;
+    justify-content: space-between;
+    align-content: space-between;
+}
+.server-control .btn {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 20%;
+    margin: 0.4rem 5%;
+}
+.server-perf {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 100%;
+}
+.server-perf>* {
+    margin: 0.2rem 0.2rem;
+    flex-grow: 1;
+}
+.server-perf>*>*:nth-child(2) {
+    border-left: none;
+    width: 2rem;
+}
+.server-perf>*>*:nth-child(3) {
+    flex-grow: 1;
+}
 #header #server_icon {
     display: none;
     vertical-align: bottom;

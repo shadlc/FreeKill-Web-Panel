@@ -115,6 +115,20 @@ export function convertBashColor(text) {
   return text;
 }
 
+// 格式化文件大小
+export function formatSize(value) {
+  if (null == value || value == "") {
+    return "0 Bytes";
+  }
+  const unitArray = new Array("B","KB","MB","GB","TB","PB","EB","ZB","YB");
+  let index = 0;
+  let srcSize = parseFloat(value * 1.1);
+  index = Math.floor(Math.log(srcSize) / Math.log(1024));
+  let size = srcSize/Math.pow(1024, index);
+  size = size.toFixed(2);
+  return size + unitArray[index];
+}
+
 // 获取新月杀最新版本号(域名不一致，不可实现)
 // export function getFreeKillLatestVersion() {
 //   fetch('https://gitee.com/notify-ctrl/FreeKill/releases/latest')

@@ -47,7 +47,8 @@ class V1API(FlaskView):
                     error = server.start()
                     if error:
                         return restful(400, error)
-                    self.server_list.connection.set(server.name, 'path', server.path)
+                    self.server_list.connection.set('terminal', server.name, 'path', server.path)
+                    self.server_list.connection.set('perf', server.name, 'pid', server.pid)
                     return restful(200, '服务器启动成功')
                 else:
                     runTmuxCmd(f'FreeKill-{name}', cmd)

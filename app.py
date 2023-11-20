@@ -2,7 +2,7 @@ from platform import system
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
 
-from src.utils import runCmd, tailLog
+from src.utils import runCmd, tailLog, queryPerf
 from src.v1 import V1API
 from src.game_server import ServerList
 from src.connection import Connection
@@ -25,10 +25,16 @@ def control(name: str):
 
 @socketio.on('connect')
 def connect():
+    type = request.args.get('type', '')
     name = request.args.get('name', '')
-    if not conn.contains(request.sid):
-        conn.add(request.sid, name, '')
-        socketio.start_background_task(tailLog, conn, request.sid)
+    if type == 'terminal':
+        if not conn.contains(request.sid):
+            conn.add(request.sid, type, name)
+            socketio.start_background_task(tailLog, conn, request.sid)
+    elif type == 'perf':
+        if not conn.contains(request.sid):
+            conn.add(request.sid, type, name)
+            socketio.start_background_task(queryPerf, conn, request.sid)
 
 @socketio.on('disconnect')
 def disconnect():

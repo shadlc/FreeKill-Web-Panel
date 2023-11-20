@@ -5,8 +5,8 @@ class Connection:
         self.socketio  = socketio
         self.clients = {}
 
-    def add(self, sid: str, name: str, path: str) -> None:
-        self.clients[sid] = {'name': name, 'path': path}
+    def add(self, sid: str, type: str, name: str) -> None:
+        self.clients[sid] = {'type': type, 'name': name}
 
     def remove(self, sid: str) -> None:
         self.clients.pop(sid)
@@ -14,7 +14,7 @@ class Connection:
     def contains(self, sid: str) -> bool:
         return sid in self.clients
 
-    def set(self, name: str, property: str, value: str) -> None:
+    def set(self, type: str, name: str, property: str, value: str) -> None:
         for sid in self.clients:
-            if self.clients[sid]['name'] == name:
+            if self.clients[sid]['type'] == type and self.clients[sid]['name'] == name :
                 self.clients[sid][property] = value
