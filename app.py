@@ -25,15 +25,15 @@ def control(name: str):
 
 @socketio.on('connect')
 def connect():
-    type = request.args.get('type', '')
-    name = request.args.get('name', '')
-    if type == 'terminal':
+    req_type = request.args.get('type', '')
+    req_name = request.args.get('name', '')
+    if req_type == 'terminal':
         if not conn.contains(request.sid):
-            conn.add(request.sid, type, name)
+            conn.add(request.sid, req_type, req_name)
             socketio.start_background_task(tailLog, conn, request.sid)
-    elif type == 'perf':
+    elif req_type == 'perf':
         if not conn.contains(request.sid):
-            conn.add(request.sid, type, name)
+            conn.add(request.sid, req_type, req_name)
             socketio.start_background_task(queryPerf, conn, request.sid)
 
 @socketio.on('disconnect')

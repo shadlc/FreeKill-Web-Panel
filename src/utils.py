@@ -35,15 +35,6 @@ def getFKVersion() -> str | None:
     except:
         return
 
-# 从指定PID进程获取其运行时长
-def getProcessRuntime(pid: int) -> str:
-    command = f'ps -p {pid} -o etime='
-    runtime = '0'
-    try:
-        runtime = subprocess.check_output(command, shell=True).decode('utf-8').strip()
-    except:...
-    return runtime
-
 # 从CMakeList.txt中获取游戏版本
 def getVersionFromPath(path: str) -> str:
     try:
@@ -71,6 +62,13 @@ def runCmd(cmd: str) -> str | None:
         print(f' >>> 执行指令 {cmd} \n >>> 耗时:{round(etime - stime, 3)}')
     return result
 
+# 从指定PID进程获取其运行时长
+def getProcessRuntime(pid: int) -> str:
+    command = f'ps -p {pid} -o etime='
+    runtime = runCmd(command)
+    runtime = runtime if runtime else '0'
+    return runtime
+
 # 获取正在运行的FreeKill服务器列表以及其信息
 def getServerList() -> list[str]:
     command = ''' ps -ef | grep -E '\?.*tmux\s+.*FreeKill-.*FreeKill -s' | awk '{print $12" "$2" "$15}' '''
@@ -96,7 +94,7 @@ def getServerList() -> list[str]:
 
 # 通过PID获取程序的执行路径
 def getProcPathByPid(pid: int) -> str:
-    command = f'readlink /proc/{pid}/exe'
+    command = f'readlink /proc/{pid}/exe 2>/dev/null'
     result = runCmd(command)
     path = result if result else ''
     path = path.rsplit('/', 1)[0].rstrip('build').rstrip('/')
@@ -317,12 +315,12 @@ def tailLog(conn: Connection, sid: str) -> None:
                 if not line:
                     time.sleep(0.1)
                     continue
+                elif re.match(r'^(\n|\^@|\x07|\x02)*$', line):
+                    continue
                 elif line == '\x02':
                     conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;32mI[0;0m] 正在启动中...\n', 'start': True})
                     time.sleep(0.5)
                     f = open(log_file)
-                elif re.match(r'^(\n|\^@|\x07|\x02)*$', line):
-                    continue
                 else:
                     conn.socketio.emit('terminal', {'text': line})
     except Exception as e:
@@ -354,7 +352,7 @@ def queryPerf(conn: Connection, sid: str) -> None:
     ...
 
 def getPerfByPid(pid: int) -> list:
-    command = ''' ps -up ''' + str(pid) + ''' --no-header | awk '{print $3"% "$6}' '''
+    command = ''' ps -up ''' + str(pid) + ''' --no-header 2>/dev/null | awk '{print $3"% "$6}' '''
     result = runCmd(command)
     perf = result if result else ''
     perf_list = perf.split(' ')

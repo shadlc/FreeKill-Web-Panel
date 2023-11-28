@@ -3,7 +3,7 @@
 ### A web control panel for server side [FreeKill](https://github.com/Qsgs-Fans/FreeKill/), depends on [Flask](https://github.com/pallets/flask) and [tmux](https://github.com/tmux/tmux)
 
 ![GitHub Pipenv locked Python version](https://img.shields.io/github/pipenv/locked/python-version/shadlc/FreeKill-Web-Panel)
-![GitHub Lines of code](https://img.shields.io/tokei/lines/github/shadlc/FreeKill-Web-Panel)
+![Scc Count Badge](https://sloc.xyz/github/shadlc/FreeKill-Web-Panel)
 ![GitHub repo size](https://img.shields.io/github/repo-size/shadlc/FreeKill-Web-Panel)
 ![GitHub - License](https://img.shields.io/github/license/shadlc/FreeKill-Web-Panel)
 ![platform](https://img.shields.io/badge/platform-linux-blue)
@@ -43,10 +43,35 @@
   5. 使用任意反向代理软件代理本机9500端口到目标路径
   6. 打开网页并使用
 
+### 反向代理设置
+- **本项目使用的Socket.io基于WebSocket，需单独设置请求头"Connection"为"upgrade"，且无法使用子目录**
+- **下面是示例**
+#### NGINX
+- **使用该配置即可在http://example.com:9501安全正常地访问FKWP**
+- **需要注意的是，必须正确配置auth_basic用户名与密码，比如使用工具htpasswd**
+```
+server {
+  listen 9501;
+  server_name example.com;
+  auth_basic on;
+  auth_basic_user_file /var/www/auth_basic_user_file;
+
+  location / {
+    proxy_pass http://127.0.0.1:9500/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-Host $http_host;
+  }
+  location /socket.io/ {
+    proxy_pass http://127.0.0.1:9500;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-Host $http_host;
+  }
+}
+```
+
 
 ## 🔒️ 许可协议
 - 本项目在遵循 [**GNU GENERAL PUBLIC LICENSE v3.0**](https://www.gnu.org/licenses/gpl-3.0.html) 许可协议下进行发布
-
-## 🌟 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=shadlc/FreeKill-Web-Panel&type=Date)](https://star-history.com/#shadlc/FreeKill-Web-Panel)

@@ -84,8 +84,9 @@ class Server:
 
     def details(self) -> dict:
         self.readConfig()
-        self.readRooms()
-        self.readPacks()
+        if isPortBusy(self.port):
+            self.readRooms()
+            self.readPacks()
         info_dict = self.info()
         info_dict = {
             **info_dict, 

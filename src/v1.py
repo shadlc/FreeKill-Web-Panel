@@ -50,6 +50,8 @@ class V1API(FlaskView):
                     self.server_list.connection.set('terminal', server.name, 'path', server.path)
                     self.server_list.connection.set('perf', server.name, 'pid', server.pid)
                     return restful(200, '服务器启动成功')
+                elif not isPortBusy(server.port):
+                    return restful(400, '服务器未启动,请先启动')
                 else:
                     runTmuxCmd(f'FreeKill-{name}', cmd)
                     return restful(200, '')
