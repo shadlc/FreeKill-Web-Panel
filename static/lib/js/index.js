@@ -1,4 +1,5 @@
 import { setScheme, showDialog, addSecondsToTime } from './utils.js'
+import { getServerList, startServer, stopServer, deleteServer } from './net.js'
 
 // 主题相关
 const themeScheme = window.matchMedia('(prefers-color-scheme: light)');
@@ -23,8 +24,12 @@ function changeScheme(){
 
 // 页面加载完毕后触发
 window.onload = function() {
+
+  document.querySelector('#refresh_btn').addEventListener('click', refresh_servers);
+  refresh_servers();
+
   setInterval(() => {
-    document.querySelectorAll('span.server-time').forEach((e)=>{
+    document.querySelectorAll('.server-time').forEach((e)=>{
       let origin_time = e.innerText;
       if(origin_time != '0') {
         let calc_time = addSecondsToTime(origin_time, 1);
@@ -35,23 +40,15 @@ window.onload = function() {
 
 };
 
-// 获取服务器列表
-function refresh_servers() {
+// 刷新服务器列表
+export function refresh_servers() {
   let refresh_btn = document.querySelector('#refresh_btn>*');
   refresh_btn.style.animation = 'rotate 1s';
-
-  fetch('v1/servers', {
-    method:'GET'
-  }).then(res => {
-    setTimeout(()=>{refresh_btn.style.animation = '';}, 1200);
-    return res.json();
-  }).then(data => render_server_list(data.data.list))
-    .catch(error => {
-      showDialog(error, '请求出错');
-  });
+  setTimeout(()=>{refresh_btn.style.animation = '';}, 1200);
+  getServerList((data)=>{
+    render_server_list(data.data.list);
+  })
 }
-document.querySelector('#refresh_btn').addEventListener('click', refresh_servers);
-refresh_servers();
 
 // 绘制服务器列表
 function render_server_list(servers){
@@ -72,15 +69,15 @@ function render_server_list(servers){
                 <span class="server-pid">`+info.pid+`</span>
             </a>
             <div class="capsule-box">
-                <i class="bi server-status">&#xF4FF;</i>
+                <i class="bi">&#xF4FF;</i>
                 <span class="server-status">`+info.status+`</span>
-                <i class="bi server-port">&#xF6D5;</i>
+                <i class="bi">&#xF6D5;</i>
                 <span class="server-port">`+info.port+`</span>
-                <i class="bi server-players">&#xF4CF;</i>
+                <i class="bi">&#xF4CF;</i>
                 <span class="server-players">`+info.players+'/'+info.capacity+`</span>
-                <i class="bi server-version">&#xF69D;</i>
+                <i class="bi">&#xF69D;</i>
                 <span class="server-version">`+info.version+`</span>
-                <i class="bi server-time">&#xF293;</i>
+                <i class="bi">&#xF293;</i>
                 <span class="server-time">`+info.runtime+`</span>
             </div>
         </div>
@@ -140,13 +137,30 @@ function initServerToggleBtn() {
         if(span.innerText.includes('详情')) {
           window.open('control/'+server_name);
         } else if(span.innerText.includes('启动')) {
-          start_server(server_name, server_pid);
+          startServer(server_name, (data)=>{
+            if(data.retcode == 0) {
+              document.querySelector('#server'+server_pid).remove();
+            }
+            refresh_servers();
+            showDialog(data.msg);
+          });
         } else if(span.innerText.includes('停止')) {
           showDialog('你真的要停止服务器<'+server_name+'>吗？', '警告',
-          ()=>{stop_server(server_name, server_pid);})
+          ()=>{
+            stopServer(server_name, (data)=>{
+            refresh_servers();
+            showDialog(data.msg);
+          });})
         } else if(span.innerText.includes('删除')) {
           showDialog('你真的要停止并删除服务器<'+server_name+'>吗？', '警告',
-          ()=>{delete_server(server_name, server_pid);})
+          ()=>{
+            deleteServer(server_name, (data)=>{
+            if(data.retcode == 0) {
+                document.querySelector('#server'+server_pid).remove();
+            }
+            refresh_servers();
+            showDialog(data.msg);
+          });})
         }
       });
     });
@@ -207,52 +221,4 @@ function add_server(callback) {
     .catch(error => {
       showDialog(error, '请求出错');
   }).then(callback())
-}
-
-// 启动服务器
-function start_server(name, pid) {
-  fetch('v1/start_server?name='+name, {
-    method:'GET'
-  }).then(res => res.json())
-    .then(data => {
-      if(data.retcode == 0) {
-        document.querySelector('#server'+pid).remove();
-      }
-      refresh_servers();
-      showDialog(data.msg);
-    })
-    .catch(error => {
-      showDialog(error, '请求出错');
-  });
-}
-
-// 停止服务器
-function stop_server(name) {
-  fetch('v1/stop_server?name='+name, {
-    method:'GET'
-  }).then(res => res.json())
-    .then(data => {
-      refresh_servers();
-      showDialog(data.msg);
-    })
-    .catch(error => {
-      showDialog(error, '请求出错');
-  });
-}
-
-// 删除服务器
-function delete_server(name, pid) {
-  fetch('v1/del_server?name='+name, {
-    method:'GET'
-  }).then(res => res.json())
-    .then(data => {
-      if(data.retcode == 0) {
-        document.querySelector('#server'+pid).remove();
-      }
-      refresh_servers();
-      showDialog(data.msg);
-    })
-    .catch(error => {
-      showDialog(error, '请求出错');
-  });
 }

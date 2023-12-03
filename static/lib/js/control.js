@@ -1,4 +1,5 @@
-import { setScheme, showDialog, convertBashColor, addSecondsToTime, formatSize } from './utils.js';
+import { setScheme, showDialog, showProcessingBox, showCodeEditBox, convertBashColor, timeToTimeStamp, formatTime, formatSize } from './utils.js';
+import { getLatestVersion, executeCmd, getDetailInfo, startServer, stopServer, getServerConfig, setServerConfig } from './net.js'
 
 // 主题相关
 const themeScheme = window.matchMedia('(prefers-color-scheme: light)');
@@ -21,16 +22,28 @@ function changeScheme(){
   }
 }
 
+// 获取当前服务器名URL
+const server_name = decodeURIComponent(window.location.pathname.split('/').pop());
+let base_url = window.location.href.replace('/control/', '/');
+base_url = base_url.substring(0, base_url.lastIndexOf('/'));
+let base_url_slash = base_url + '/';
+
+document.querySelector('#title a').innerText = server_name;
+
+let start_time = 0;
+
 // 页面加载完毕后触发
 window.onload = function() {
+  refreshDetails();
+  getLatestVersion((data)=>{
+    if(data.retcode != 0) {
+      showDialog(data.msg, '提示');
+    }
+    document.getElementById('latest_version').innerHTML = data.data.version;
+  }, base_url);
+
   setInterval(() => {
-    document.querySelectorAll('#server_time').forEach((e)=>{
-      let origin_time = e.innerText;
-      if(origin_time != '0') {
-        let calc_time = addSecondsToTime(origin_time, 1);
-        e.innerText = calc_time;
-      }
-    });
+    refreshTime();
   }, 1000);
 
   document.querySelector('#refresh_btn').addEventListener('click', ()=>{
@@ -38,19 +51,53 @@ window.onload = function() {
   });
 };
 
+// 刷新服务器详细信息
+function refreshDetails() {
+  getDetailInfo(server_name, (data)=>{
+    if(data.retcode != 0) {
+      showDialog(data.msg, '提示');
+      return;
+    }
+    let info = data.data;
+    if(info.icon) {
+      document.querySelectorAll('#server_icon').forEach((e)=>{
+        e.src = info.icon;
+        e.style.display = 'inline-block';
+      });
+    }
+    document.getElementById('server_name').innerHTML = info.name;
+    document.getElementById('server_version').innerHTML = info.version;
+    document.getElementById('server_desc').innerHTML = info.desc;
+    document.getElementById('server_motd').innerHTML = info.motd;
+    document.getElementById('server_port').innerHTML = info.port;
+    document.getElementById('server_pid').innerHTML = info.pid;
+    document.getElementById('server_enable_bots').innerHTML = info.enable_bots?'启用':'禁用';
+    document.getElementById('server_temp_ban_time').innerHTML = info.temp_ban_time + '分钟';
+    if(info.runtime != 0) {
+      start_time = Date.now() - timeToTimeStamp(info.runtime) * 1000;
+    } else {
+      start_time = 0;
+    }
+    refreshTime();
+  }, base_url);
+}
 
-// 获取当前服务器名URL
-let name = decodeURIComponent(window.location.pathname.split('/').pop());
-let base_url = window.location.pathname.replace('/control/', '/');
-base_url = base_url.substring(0, base_url.lastIndexOf('/'));
-
-document.querySelector('#title a').innerText = name;
+// 刷新服务器运行时长
+function refreshTime() {
+  if(start_time == 0) {
+    document.getElementById('server_time').innerHTML = '已停止';
+  } else {
+    let running_time = Date.now() - start_time;
+    let string_time = formatTime(running_time);
+    document.getElementById('server_time').innerHTML = string_time;
+  }
+}
 
 // 实时监控终端
 let screen = document.querySelector('.terminal-screen');
 let cover = document.querySelector('.terminal-cover');
-let terminal_socket = io.connect(base_url+'?type=terminal&name='+name);
-terminal_socket.on('terminal', function(data) {
+let socket = io.connect(base_url+'?name='+server_name);
+socket.on('terminal', function(data) {
   cover.style.display = 'none';
   if(data.history) {
     let text = convertBashColor(data.text);
@@ -78,10 +125,18 @@ terminal_socket.on('terminal', function(data) {
   }
   screen.scrollTop = screen.scrollHeight - screen.clientHeight;
 });
-terminal_socket.on('disconnect', () => {
+// 实时获取服务器CPU与内存占用
+socket.on('perf', function(data) {
+  if(data.data) {
+    document.getElementById('server_cpu').innerHTML = data.data.cpu;
+    document.getElementById('server_ram').innerHTML
+      = /^\d+$/.test(data.data.ram)?formatSize(data.data.ram*1000):data.data.ram;
+  }
+});
+socket.on('disconnect', () => {
   cover.style.display = 'inherit';
 });
-terminal_socket.on('connect_error', function() {
+socket.on('connect_error', function() {
   cover.style.display = 'inherit';
 });
 
@@ -111,34 +166,20 @@ terminal_input.addEventListener('keydown', function(e) {
       history.push(currentValue);
       localStorage.setItem('cmd_history', JSON.stringify(history));
       currentIndex = history.length;
-      execute(terminal_input.value, ()=>{
-        terminal_input.value = '';
-      });
+      executeCmd(
+        server_name,
+        terminal_input.value,
+        (data)=>{
+          if(data.retcode != 0) {
+            showDialog(data.msg, '提示');
+          }
+          terminal_input.value = '';
+        }, base_url
+      );
     }
-    terminal_input.value = history[currentIndex] || '';
+    terminal_input.value = '';
   }
 });
-
-// 执行终端指令
-function execute(cmd, callback) {
-  let data = {'name': name, 'cmd': cmd};
-  fetch(base_url + '/v1/execute',{
-    method:'POST',
-    headers: {
-    'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data)
-  }).then(res => res.json())
-    .then(data => {
-      if(data.retcode != 0) {
-        showDialog(data.msg, '提示');
-      }
-      callback();
-    })
-    .catch(error => {
-      showDialog(error, '请求出错');
-  })
-}
 
 // 展开与收起终端
 let terminal = document.querySelector('.terminal');
@@ -154,74 +195,81 @@ document.querySelectorAll('.terminal-btn').forEach((e)=>{
   });
 })
 
-// 获取服务器详细信息
-function getDetailInfo(callback) {
-  let data = {'name': name};
-  fetch(base_url + '/v1/details',{
-    method:'POST',
-    headers: {
-    'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data)
-  }).then(res => res.json())
-    .then(data => {
-      if(data.retcode != 0) {
-        showDialog(data.msg, '提示');
-      }
-      callback(data.data);
-    })
-    .catch(error => {
-      showDialog(error, '请求出错');
-  })
-}
-function refreshDetails() {
-  getDetailInfo((info)=>{
-    console.log(info);
-    if(info.icon) {
-      document.querySelectorAll('#server_icon').forEach((e)=>{
-        e.src = info.icon;
-        e.style.display = 'inline-block';
-      });
-    }
-    document.getElementById('server_name').innerHTML = info.name;
-    document.getElementById('server_version').innerHTML = info.version;
-    document.getElementById('server_desc').innerHTML = info.desc;
-    document.getElementById('server_motd').innerHTML = info.motd;
-    document.getElementById('server_port').innerHTML = info.port;
-    document.getElementById('server_pid').innerHTML = info.pid;
-    document.getElementById('server_enable_bots').innerHTML = info.enable_bots?'启用':'禁用';
-    document.getElementById('server_temp_ban_time').innerHTML = info.temp_ban_time + '分钟';
-    document.getElementById('server_time').innerHTML = info.runtime;
-  });
-}
-refreshDetails();
-
-
-// 获取FreeKill最新版本
-function getLatestVersion(callback) {
-  fetch(base_url + '/v1/check_version?type=FreeKill',{
-    method:'GET'
-  }).then(res => res.json())
-    .then(data => {
-      if(data.retcode != 0) {
-        showDialog(data.msg, '提示');
-      }
-      callback(data.data.version);
-    })
-    .catch(error => {
-      showDialog(error, '请求出错');
-  })
-}
-getLatestVersion((version)=>{
-  document.getElementById('latest_version').innerHTML = version;
+// 启动服务器按钮
+document.getElementById('start_btn').addEventListener('click', ()=>{
+  startServer(server_name, (data)=>{
+    refreshDetails();
+    showDialog(data.msg);
+  }, base_url_slash);
 });
 
-// 实时获取服务器CPU与内存占用
-let perf_socket = io.connect(base_url+'?type=perf&name='+name);
-perf_socket.on('perf', function(data) {
-  if(data.data) {
-    document.getElementById('server_cpu').innerHTML = data.data.cpu;
-    document.getElementById('server_ram').innerHTML
-      = /^\d+$/.test(data.data.ram)?formatSize(data.data.ram*1000):data.data.ram;
-  }
+// 停止服务器按钮
+document.getElementById('stop_btn').addEventListener('click', ()=>{
+  showDialog('你真的要停止服务器<'+server_name+'>吗？', '警告',
+  ()=>{
+    stopServer(server_name, (data)=>{
+      refreshDetails();
+      showDialog(data.msg);
+    }, base_url_slash);})
+});
+
+// 重启服务器按钮
+document.getElementById('restart_btn').addEventListener('click', ()=>{
+  showDialog('你真的要重启服务器<'+server_name+'>吗？', '警告',
+  ()=>{
+    showProcessingBox(
+      '重启服务器中...',
+      '提示',
+      (callback)=>{
+        stopServer(server_name, (data)=>{
+          if(data.retcode != 0) {
+            showDialog(data.msg, '提示', ()=>{
+              callback(false);
+            });
+            
+          } else {
+            startServer(server_name, (data)=>{
+              if(data.retcode != 0) {
+                showDialog(data.msg, '提示', ()=>{
+                  callback(false);
+                });
+              } else {
+                callback(true, '服务器重启成功');
+              }
+            }, base_url_slash);
+          }
+        }, base_url_slash);
+      }
+    );
+  })
+});
+
+// 修改服务器配置按钮
+document.getElementById('config_btn').addEventListener('click', ()=>{
+  showProcessingBox(
+    '获取配置文件中...',
+    '提示',
+    (callback)=>{
+      getServerConfig(server_name, (data)=>{
+        if(data.retcode != 0) {
+          showDialog(data.msg, '提示', ()=>{
+            callback(false);
+          });
+        } else {
+          callback(false);
+          showCodeEditBox(
+            '请在下方方框中修改新月杀配置并保存',
+            '配置修改',
+            data.data.config,
+            ()=>{
+              let config = document.getElementById('code_edit_box').value;
+              setServerConfig(server_name, config, (data)=>{
+                showDialog(data.msg);
+              }, base_url_slash)
+            }
+          );
+        }
+      }, base_url_slash);
+    }
+  );
 });

@@ -59,6 +59,10 @@ footer {
 ::-webkit-scrollbar-thumb:hover {
     box-shadow: inset 0 0 10px gray;
 }
+::-webkit-scrollbar-corner,
+::-webkit-scrollbar-button {
+    display: none;
+}
 
 .black { color: black; }
 .red { color: red; }
@@ -143,6 +147,19 @@ footer {
 }
 .modal-footer * {
     margin: 0.5rem;
+}
+
+.code-editor {
+    font-family: "Courier New", Courier, monospace;
+    position: relative;
+    margin-top: 0.5rem;
+    border: 2px solid black;
+    border-radius: 0.5rem;
+    background: rgb(50, 50, 50);
+    white-space: pre;
+    word-wrap: anywhere;
+    color: rgb(233, 233, 233);
+    overflow: auto;
 }
 .text_input {
     display: flex;
@@ -393,8 +410,9 @@ footer {
     align-items: center;
     justify-content: center;
     padding: 0 0.2rem;
-    text-align: center;
     border-left: 2px solid;
+    text-align: center;
+    word-wrap: anywhere;
 }
 .capsule-box>*:first-child {
     border-left: none;
@@ -607,8 +625,11 @@ footer {
     flex-grow: 1;
 }
 .server-detail>*>*:nth-child(2) {
-    border-left: none;
     width: 4rem;
+}
+.server-detail>*>*:nth-child(3n-1) {
+    border-left: none;
+    min-width: 2rem;
 }
 .server-control {
     display: flex;
@@ -636,7 +657,7 @@ footer {
 }
 .server-perf>*>*:nth-child(2) {
     border-left: none;
-    width: 2rem;
+    min-width: 2rem;
 }
 .server-perf>*>*:nth-child(3) {
     flex-grow: 1;

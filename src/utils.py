@@ -59,12 +59,12 @@ def runCmd(cmd: str) -> str | None:
         return None
     etime = time.time()
     if '--debug' in sys.argv[1:]:
-        print(f' >>> 执行指令 {cmd} \n >>> 耗时:{round(etime - stime, 3)}')
+        print(f' >>> 耗时({"{:.3f}".format(etime - stime)})执行指令 {cmd}')
     return result
 
 # 从指定PID进程获取其运行时长
 def getProcessRuntime(pid: int) -> str:
-    command = f'ps -p {pid} -o etime='
+    command = f' ps -p {pid} -o etime='
     runtime = runCmd(command)
     runtime = runtime if runtime else '0'
     return runtime
@@ -94,7 +94,7 @@ def getServerList() -> list[str]:
 
 # 通过PID获取程序的执行路径
 def getProcPathByPid(pid: int) -> str:
-    command = f'readlink /proc/{pid}/exe 2>/dev/null'
+    command = f' readlink /proc/{pid}/exe 2>/dev/null'
     result = runCmd(command)
     path = result if result else ''
     path = path.rsplit('/', 1)[0].rstrip('build').rstrip('/')
@@ -113,7 +113,7 @@ def getProcPortByPid(pid: int) -> int:
 
 # 判断端口号是否是被占用
 def isPortBusy(port: int) -> bool:
-    command = f'netstat -tlnp 2>/dev/null | grep :{port}'
+    command = f' netstat -tlnp 2>/dev/null | grep :{port}'
     if runCmd(command):
         return True
     return False
@@ -155,6 +155,7 @@ def restful(code: int, msg: str = '', data: dict = {}) -> None:
 # 启动服务器,返回PID
 def startGameServer(name: str, port: int, path: str) -> int:
     command = f''' cd {path};tmux new -d -s "FreeKill-{name}" "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
+    print(f' >>> 独立进程   执行指令 {command}')
     subprocess.Popen([command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).wait()
     command = ''' ps -ef | grep -vE '(tee|grep)' | grep './FreeKill -s ''' + str(port) + '''' | awk '{print $2}' '''
     result = ''
@@ -186,6 +187,15 @@ def deleteGameServer(server_name: str) -> str:
         return saveServerToConfig(server_dict)
     return '服务器已经不存在'
 
+# 读取游戏配置文件
+def readGameConfig(path: str) -> [bool, str]:
+    try:
+        with open(f'{path}/freekill.server.config.json') as f:
+            config_text = f.read()
+        return True, config_text
+    except Exception as e:
+        return False, e
+
 # 写入游戏配置文件
 def writeGameConfig(path: str, config: dict) -> str | None:
     try:
@@ -198,14 +208,14 @@ def writeGameConfig(path: str, config: dict) -> str | None:
 
 # 简单的对tmux窗口进行内容捕获
 def captureTmux(tid: str) -> str:
-    command = f'tmux capture-pane -pS - -t {tid}'
+    command = f' tmux capture-pane -pS - -t {tid} 2>&1'
     result = runCmd(command)
     result = result if result else ''
     return result
 
 # 在指定tmux内执行语句，并对Tmux窗口进行内容捕获
 def runTmuxCmd(tid: str, cmd: str) -> str:
-    command = f'tmux send-keys -t {tid} "{cmd}" Enter;sleep 0.1;tmux capture-pane -peS - -t {tid}'
+    command = f' tmux send-keys -t {tid} "{cmd}" Enter;sleep 0.1;tmux capture-pane -peS - -t {tid} 2>&1'
     result = runCmd(command)
     result = result if result else ''
     return result
@@ -307,7 +317,7 @@ def tailLog(conn: Connection, sid: str) -> None:
             path = temp_path
 
         log_file = f'{path}/fk-latest.log'
-        conn.socketio.emit('terminal', {'text': tailLogNum(log_file, 100), 'history': True})
+        conn.socketio.emit('terminal', {'text': tailLogNum(log_file, 500), 'history': True})
         with open(log_file) as f:
             f.seek(0, 2)
             while conn.contains(sid):
@@ -317,7 +327,7 @@ def tailLog(conn: Connection, sid: str) -> None:
                     continue
                 elif re.match(r'^(\n|\^@|\x07|\x02)*$', line):
                     continue
-                elif line == '\x02':
+                elif line == '\x01':
                     conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;32mI[0;0m] 正在启动中...\n', 'start': True})
                     time.sleep(0.5)
                     f = open(log_file)
@@ -339,7 +349,7 @@ def queryPerf(conn: Connection, sid: str) -> None:
         for server_info in getServerList():
             name = conn.clients[sid].get('name')
             if name == server_info[0]:
-                conn.set('perf', name, 'pid', server_info[1])
+                conn.set(name, 'pid', server_info[1])
                 break
         if not conn.clients[sid].get('pid'):
             conn.socketio.emit('perf', {'data': {'cpu': '请求失败', 'ram': '请求失败'}})

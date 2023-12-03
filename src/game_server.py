@@ -54,7 +54,7 @@ class Server:
         return '服务器启动失败，该端口可能已被占用'
 
     def info(self) -> dict:
-        runtime = 0
+        runtime = '0'
         if not isPortBusy(self.port):
             self.status = '已停止'
         else:

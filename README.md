@@ -47,8 +47,8 @@
 - **本项目使用的Socket.io基于WebSocket，需单独设置请求头"Connection"为"upgrade"，且无法使用子目录**
 - **下面是示例**
 #### NGINX
-- **使用该配置即可在http://example.com:9501安全正常地访问FKWP**
-- **需要注意的是，必须正确配置auth_basic用户名与密码，比如使用工具htpasswd**
+- **使用该配置即可在 http://example.com:9501 正常地访问FKWP**
+- **需要注意的是，必须正确配置auth_basic用户名与密码，比如使用工具htpasswd确保安全地访问**
 ```
 server {
   listen 9501;
@@ -61,13 +61,17 @@ server {
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-Host $http_host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   }
   location /socket.io/ {
     proxy_pass http://127.0.0.1:9500;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-Host $http_host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   }
 }
 ```

@@ -9,7 +9,7 @@ from src.connection import Connection
 
 app = Flask(__name__, static_folder='static', static_url_path='/')
 app.json.ensure_ascii = False
-socketio = SocketIO(app, async_mode='gevent')
+socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins="*")
 
 conn = Connection(socketio)
 server_list = ServerList()
@@ -25,16 +25,11 @@ def control(name: str):
 
 @socketio.on('connect')
 def connect():
-    req_type = request.args.get('type', '')
     req_name = request.args.get('name', '')
-    if req_type == 'terminal':
-        if not conn.contains(request.sid):
-            conn.add(request.sid, req_type, req_name)
-            socketio.start_background_task(tailLog, conn, request.sid)
-    elif req_type == 'perf':
-        if not conn.contains(request.sid):
-            conn.add(request.sid, req_type, req_name)
-            socketio.start_background_task(queryPerf, conn, request.sid)
+    if not conn.contains(request.sid):
+        conn.add(request.sid, req_name)
+        socketio.start_background_task(tailLog, conn, request.sid)
+        socketio.start_background_task(queryPerf, conn, request.sid)
 
 @socketio.on('disconnect')
 def disconnect():

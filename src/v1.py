@@ -1,8 +1,9 @@
+import json
 import re
 import time
 from flask_classful import FlaskView, route, request
 
-from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, writeGameConfig, isFileExists, runTmuxCmd, appendFile
+from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, appendFile
 from src.game_server import Server, ServerList
 
 class V1API(FlaskView):
@@ -36,21 +37,22 @@ class V1API(FlaskView):
     def execute(self):
         name = request.json.get('name', '')
         cmd = request.json.get('cmd', '')
-        for char in ['`', '"', '$']:
+        for char in ['`', '"', '$', '\x01']:
             cmd = cmd.replace(char, f'\\{char}')
         list = self.server_list.getList()
         for server in list:
             if server.name == name:
-                if cmd == 'start' and not isPortBusy(server.port):
-                    appendFile(f'{server.path}/fk-latest.log', '\x02')
+                is_port_busy = isPortBusy(server.port)
+                if cmd == 'start' and not is_port_busy:
+                    appendFile(f'{server.path}/fk-latest.log', '\x01')
                     time.sleep(0.1)
                     error = server.start()
                     if error:
                         return restful(400, error)
-                    self.server_list.connection.set('terminal', server.name, 'path', server.path)
-                    self.server_list.connection.set('perf', server.name, 'pid', server.pid)
+                    self.server_list.connection.set(server.name, 'path', server.path)
+                    self.server_list.connection.set(server.name, 'pid', server.pid)
                     return restful(200, '服务器启动成功')
-                elif not isPortBusy(server.port):
+                elif not is_port_busy:
                     return restful(400, '服务器未启动,请先启动')
                 else:
                     runTmuxCmd(f'FreeKill-{name}', cmd)
@@ -122,9 +124,13 @@ class V1API(FlaskView):
             if server.name == server_name:
                 if isPortBusy(server.port):
                     return restful(400, '服务器已经在运行中')
+                appendFile(f'{server.path}/fk-latest.log', '\x01')
+                time.sleep(0.1)
                 error = server.start()
                 if error:
                     return restful(400, error)
+                self.server_list.connection.set(server.name, 'path', server.path)
+                self.server_list.connection.set(server.name, 'pid', server.pid)
                 return restful(200, '服务器启动成功')
 
         return restful(400, '服务器启动失败，该端口可能已被占用')
@@ -154,6 +160,37 @@ class V1API(FlaskView):
                 self.server_list.remove(server)
                 self.server_list.refreshConfig()
                 return restful(200, '已删除该服务器')
+
+        return restful(404, '无法找到该服务器')
+
+    @route('config', methods=['GET', 'POST'])
+    def config(self):
+        if request.method == 'GET':
+            server_name = request.args.get('name', '')
+            list = self.server_list.getList()
+            for server in list:
+                if server.name == server_name:
+                    result, config = readGameConfig(server.path)
+                    if result:
+                        return restful(200, '', {'config': config})
+                    else:
+                        return restful(500, f'服务器<{server_name}>配置文件读取出错，目录为：'
+                                    f'\n{server.path}/freekill.server.config.json')
+        elif request.method == 'POST':
+            server_name = request.json.get('name', '')
+            config_text = request.json.get('config', '')
+            print(server_name)
+            print(config_text)
+            config = json.loads(config_text)
+            list = self.server_list.getList()
+            for server in list:
+                if server.name == server_name:
+                    e = writeGameConfig(server.path, config)
+                    if e:
+                        return restful(500, f'{e}')
+                    else:
+                        return restful(200, f'服务器<{server_name}>配置文件修改成功\n重启后生效')
+            
 
         return restful(404, '无法找到该服务器')
 

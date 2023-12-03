@@ -16,19 +16,78 @@ export function showDialog(msg, title='提示', callback=null) {
     <div class="modal-dialog">
       <div class="modal-title">
           <h3>`+title+`</h3>
-          <span class="close-btn" onclick="document.getElementById('msg_dialog').remove();"></span>
+          <span class="close-btn" onclick="document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());"></span>
       </div>
       <div class="modal-content center">
-          <p1>`+msg+`</p1>
+          <p1 style="overflow: auto;max-height:80vh;">`+msg+`</p1>
       </div>
       <div class="modal-footer">
-          <input id="msg_dialog_confirm_btn" class="btn" type="button" value="确定" onclick="document.getElementById('msg_dialog').remove();" />
+          <input id="confirm_btn" class="btn" type="button" value="确定" onclick="document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());" />
       </div>
     </div>
   </div>
   `
   document.body.insertAdjacentHTML('BeforeEnd', msg_div);
-  document.getElementById('msg_dialog_confirm_btn').addEventListener('click', callback);
+  document.getElementById('confirm_btn').addEventListener('click', callback);
+}
+
+// 弹出处理框
+export function showProcessingBox(msg, title='处理中', process=null) {
+  let box_div = `
+  <div id="process_dialog" class="modal">
+    <div class="modal-dialog">
+      <div class="modal-title">
+          <h3>`+title+`</h3>
+          <span class="close-btn" onclick="document.querySelectorAll('#process_dialog').forEach((e)=>e.remove());"></span>
+      </div>
+      <div class="modal-content center">
+          <p1 style="overflow: auto;max-height:80vh;">`+msg+`</p1>
+      </div>
+      <div class="modal-footer">
+          <i id="processing_icon" class="bi rotate"><b>&#xF130;</b></i>
+          <input id="confirm_btn" class="btn hide" type="button" value="确定" onclick="document.querySelectorAll('#process_dialog').forEach((e)=>e.remove());" />
+      </div>
+    </div>
+  </div>
+  `
+  document.body.insertAdjacentHTML('BeforeEnd', box_div);
+  process((result, text='')=>{
+    if(result) {
+      document.getElementById('processing_icon').remove();
+      document.getElementById('confirm_btn').classList.remove('hide');
+      document.querySelector('#process_dialog p1').innerHTML = text;
+    } else {
+      document.querySelectorAll('#process_dialog').forEach((e)=>e.remove());
+    }
+  })
+}
+
+// 弹出代码修改框
+export function showCodeEditBox(msg, title='修改', text='', callback=null) {
+  let box_div = `
+  <div id="code_edit_dialog" class="modal">
+    <div class="modal-dialog">
+      <div class="modal-title">
+          <h3>`+title+`</h3>
+          <span class="close-btn" onclick="document.querySelectorAll('#code_edit_dialog').forEach((e)=>e.remove());"></span>
+      </div>
+      <div class="modal-content center">
+          <p1 style="overflow: auto;">`+msg+`</p1>
+          <textarea id="code_edit_box" class="code-editor">`+text+`</textarea>
+      </div>
+      <div class="modal-footer">
+          <input id="confirm_btn" class="btn" type="button" value="确定" />
+      </div>
+    </div>
+  </div>
+  `
+  document.body.insertAdjacentHTML('BeforeEnd', box_div);
+  document.getElementById('code_edit_box').style.height = (window.innerHeight - 200) + 'px';
+  document.getElementById('code_edit_box').style.width = window.innerWidth - 70 + 'px';
+  document.getElementById('confirm_btn').addEventListener('click', ()=>{
+    callback();
+    document.querySelectorAll('#code_edit_dialog').forEach((e)=>e.remove());
+  });
 }
 
 // 计算时间间隔并返回格式化日期
@@ -48,6 +107,35 @@ export function period(now, past, format) {
     .replace('mm', minutes % 60)
     .replace('ss', seconds % 60);
   return result.trim();
+}
+
+// 给定时间戳返回格式化日期
+export function formatTime(timestamp) {
+  let milliseconds = Math.abs(timestamp);
+  let seconds = Math.floor(milliseconds / 1000);
+  let minutes = Math.floor(seconds / 60);
+  let hours = Math.floor(minutes / 60);
+  let days = Math.floor(hours / 24);
+  let months = Math.floor(days / 30);
+  let years = Math.floor(months / 12);
+  let string_time = (seconds % 60).toString().padStart(2, '0') + '秒';
+
+  if(minutes != 0) {
+    string_time = (minutes % 60).toString().padStart(2, '0') + '分' + string_time;
+  } else return string_time;
+  if(hours != 0) {
+    string_time = (hours % 24).toString().padStart(2, '0') + '时' + string_time;
+  } else return string_time;
+  if(days != 0) {
+    string_time = (days % 30).toString().padStart(2, '0') + '日' + string_time;
+  } else return string_time;
+  if(months != 0) {
+    string_time = (months % 12).toString().padStart(2, '0') + '月' + string_time;
+  } else return string_time;
+  if(years != 0) {
+    string_time = years.toString().padStart(2, '0') + '年' + string_time;
+  } else return string_time;
+  return string_time;
 }
 
 // 对特定格式的时间进行计算
@@ -75,6 +163,19 @@ export function addSecondsToTime(time, add_seconds) {
   } else {
     return `${updated_minutes}:${updated_seconds}`;
   }
+}
+
+// 对特定格式的时间计算得到时间戳
+export function timeToTimeStamp(time) {
+  let [days, hours, minutes, seconds] = [0, 0, 0, 0]
+  if(time.match(/^\d+:\d+$/g)) {
+    [minutes, seconds] = time.match(/\d+/g).map(Number);
+  } else if(time.match(/^\d+:\d+:\d+$/g)) {
+    [hours, minutes, seconds] = time.match(/\d+/g).map(Number);
+  } else if(time.match(/^\d+-\d+:\d+:\d+$/g)) {
+    [days, hours, minutes, seconds] = time.match(/\d+/g).map(Number);
+  }
+  return (days*24*60*60) + (hours*60*60) + (minutes*60) + seconds;
 }
 
 // 转换BASH颜色为HTML实体
