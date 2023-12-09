@@ -203,13 +203,13 @@ def updateGameServer(server_name: str) -> str:
         && latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`) 2>&1 \
         && git checkout $latest_tag 2>&1 \
         && echo "\n正在编译...\n" \
-        && [ -f include/lua.h ] || cp -r /usr/include/lua5.4/* include \
-        && [ -d build ] || mkdir build \
+        && ([ -f include/lua.h ] || cp -r /usr/include/lua5.4/* include) \
+        && ([ -d build ] || mkdir build) \
         && cd build \
         && cmake .. \
         && make \
         && cd .. \
-        && [ -f FreeKill ] || ln -s build/FreeKill
+        && ([ -f FreeKill ] || ln -s build/FreeKill)
     '''
     if '--debug' in sys.argv[1:]:
         print(f' >>> 独立进程   执行指令' + update_cmd.replace('\n', '').replace('    ',''))
