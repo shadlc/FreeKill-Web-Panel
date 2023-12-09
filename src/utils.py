@@ -208,6 +208,7 @@ def updateGameServer(server_name: str) -> str:
         && cd build \
         && cmake .. \
         && make \
+        && cd .. \
         && [ -f FreeKill ] || ln -s build/FreeKill
     '''
     if '--debug' in sys.argv[1:]:

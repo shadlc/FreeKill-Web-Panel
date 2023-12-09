@@ -80,6 +80,7 @@ export function updateServer(name, callback, base_url='') {
       <p>cd build</p>
       <p>cmake .. -DFK_SERVER_ONLY=</p>
       <p>make</p>
+      <p>cd ..</p>
       <p>[ -f FreeKill ] || ln -s build/FreeKill</p>
     </details>
     `,
