@@ -1,16 +1,17 @@
 import json
 import re
 import time
+from flask import Response
 from flask_classful import FlaskView, route, request
 
-from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, appendFile
-from src.game_server import Server, ServerList
+from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, appendFile
+from src.game_server import Server, Controller
 
 class V1API(FlaskView):
     
     def __init__(self):
         super().__init__()
-        self.server_list : ServerList
+        self.controller : Controller
     
     @route('/')
     def index(self):
@@ -19,7 +20,7 @@ class V1API(FlaskView):
     @route('servers', methods=['GET'])
     def servers(self):
         server_dict_list = []
-        list = self.server_list.getList()
+        list = self.controller.getList()
         for server in list:
             server_dict_list.append(server.info())
         return restful(200, '', {'list': server_dict_list})
@@ -27,7 +28,7 @@ class V1API(FlaskView):
     @route('details', methods=['POST'])
     def details(self):
         name = request.json.get('name', '')
-        for server in self.server_list.list:
+        for server in self.controller.list:
             if server.name == name:
                 info_dict = server.details()
                 return restful(200, '', info_dict)
@@ -39,7 +40,7 @@ class V1API(FlaskView):
         cmd = request.json.get('cmd', '')
         for char in ['`', '"', '$', '\x01']:
             cmd = cmd.replace(char, f'\\{char}')
-        list = self.server_list.getList()
+        list = self.controller.getList()
         for server in list:
             if server.name == name:
                 is_port_busy = isPortBusy(server.port)
@@ -49,11 +50,11 @@ class V1API(FlaskView):
                     error = server.start()
                     if error:
                         return restful(400, error)
-                    self.server_list.connection.set(server.name, 'path', server.path)
-                    self.server_list.connection.set(server.name, 'pid', server.pid)
+                    self.controller.connection.set(server.name, 'path', server.path)
+                    self.controller.connection.set(server.name, 'pid', server.pid)
                     return restful(200, '服务器启动成功')
                 elif not is_port_busy:
-                    return restful(400, '服务器未启动,请先启动')
+                    return restful(405, '服务器未启动,请先启动')
                 else:
                     runTmuxCmd(f'FreeKill-{name}', cmd)
                     return restful(200, '')
@@ -71,17 +72,13 @@ class V1API(FlaskView):
         motd = request.json.get('motd', '')
         enable_bots = bool(request.json.get('enable_bots', True))
         
-        list = self.server_list.getList()
+        list = self.controller.getList()
         if not name:
-            return restful(400, f'服务器名称不能为空')
+            return restful(405, f'服务器名称不能为空')
         elif not port:
-            return restful(400, f'服务器端口无效')
+            return restful(405, f'服务器端口无效')
         elif not path:
-            return restful(400, f'服务器启动路径不能为空')
-        elif not capacity:
-            return restful(400, f'服务器最大人数值无效')
-        elif not capacity:
-            return restful(400, f'服务器最大人数值无效')
+            return restful(405, f'服务器启动路径不能为空')
         elif name in [server.name for server in list]:
             return restful(409, f'该服务器名称重名：{name}')
         elif match := re.search(r'([<>:;"/\\\|\?\*\x00-\x1F\x7F\'\`\s])', name):
@@ -89,7 +86,7 @@ class V1API(FlaskView):
             return restful(409, f'该服务器名称存在不可用字符：<{result}>')
         elif isPortBusy(port):
             return restful(409, f'该端口已被占用：{port}')
-        elif port < 1025 and port > 65535:
+        elif port < 1025 or port > 65535:
             return restful(409, f'该端口不可用：{port}')
         elif not isFileExists(f'{path}/FreeKill'):
             return restful(409, f'该路径无效')
@@ -113,24 +110,24 @@ class V1API(FlaskView):
             return restful(400, '服务器启动失败，请联系管理员')
         server = Server()
         server.init(name, port, path=path)
-        self.server_list.add(server)
+        self.controller.add(server)
         return restful(200, f'服务器已添加并启动')
 
     @route('start_server', methods=['GET'])
     def restart_server(self):
         server_name = request.args.get('name', '')
-        list = self.server_list.getList()
+        list = self.controller.getList()
         for server in list:
             if server.name == server_name:
                 if isPortBusy(server.port):
-                    return restful(400, '服务器已经在运行中')
+                    return restful(405, '服务器已经在运行中')
                 appendFile(f'{server.path}/fk-latest.log', '\x01')
                 time.sleep(0.1)
                 error = server.start()
                 if error:
                     return restful(400, error)
-                self.server_list.connection.set(server.name, 'path', server.path)
-                self.server_list.connection.set(server.name, 'pid', server.pid)
+                self.controller.connection.set(server.name, 'path', server.path)
+                self.controller.connection.set(server.name, 'pid', server.pid)
                 return restful(200, '服务器启动成功')
 
         return restful(400, '服务器启动失败，该端口可能已被占用')
@@ -138,28 +135,39 @@ class V1API(FlaskView):
     @route('stop_server', methods=['GET'])
     def stop_server(self):
         server_name = request.args.get('name', '')
-        list = self.server_list.getList()
+        list = self.controller.getList()
         for server in list:
             if not isPortBusy(server.port):
-                return restful(400, '服务器已经是停止状态')
+                return restful(405, '服务器已经是停止状态')
             if server.name == server_name and stopGameServer(server.name):
                 return restful(200, '服务器停止成功')
 
-        return restful(400, '服务器停止失败')
+        return restful(404, '无法找到该服务器')
 
     @route('del_server', methods=['GET'])
     def del_server(self):
         server_name = request.args.get('name', '')
-        list = self.server_list.getList()
+        list = self.controller.getList()
         for server in list:
             if server.name == server_name:
                 if isPortBusy(server.port):
-                    return restful(400, '请先停止该服务器')
+                    return restful(405, '请先停止该服务器')
                 if e := deleteGameServer(server_name):
                     return restful(400, e)
-                self.server_list.remove(server)
-                self.server_list.refreshConfig()
+                self.controller.remove(server)
+                self.controller.refreshConfig()
                 return restful(200, '已删除该服务器')
+
+        return restful(404, '无法找到该服务器')
+
+    @route('update_server', methods=['GET'])
+    def update_server(self):
+        server_name = request.args.get('name', '')
+        for server in self.controller.getList():
+            if server.name == server_name:
+                if isPortBusy(server.port):
+                    return Response(f'event: message\ndata: 只能在服务器未运行时更新\n\n', mimetype='text/event-stream')
+                return Response(updateGameServer(server_name), mimetype='text/event-stream')
 
         return restful(404, '无法找到该服务器')
 
@@ -167,7 +175,7 @@ class V1API(FlaskView):
     def config(self):
         if request.method == 'GET':
             server_name = request.args.get('name', '')
-            list = self.server_list.getList()
+            list = self.controller.getList()
             for server in list:
                 if server.name == server_name:
                     result, config = readGameConfig(server.path)
@@ -179,10 +187,8 @@ class V1API(FlaskView):
         elif request.method == 'POST':
             server_name = request.json.get('name', '')
             config_text = request.json.get('config', '')
-            print(server_name)
-            print(config_text)
             config = json.loads(config_text)
-            list = self.server_list.getList()
+            list = self.controller.getList()
             for server in list:
                 if server.name == server_name:
                     e = writeGameConfig(server.path, config)
@@ -194,11 +200,34 @@ class V1API(FlaskView):
 
         return restful(404, '无法找到该服务器')
 
+    @route('modify', methods=['POST'])
+    def modify(self):
+        server_name = request.json.get('name', '')
+        server_port = int(request.json.get('port')) if request.json.get('port').isdigit() else 0
+        for server in self.controller.getList():
+            if server.name == server_name:
+                if isPortBusy(server.port):
+                    return restful(405, f'只能在服务器未运行时操作')
+                elif server_port:
+                    if not server_port:
+                        return restful(405, f'服务器端口无效')
+                    elif isPortBusy(server_port):
+                        return restful(409, f'该端口已被占用：{server_port}')
+                    elif server_port < 1025 or server_port > 65535:
+                        return restful(409, f'该端口不可用：{server_port}')
+                    server.port = server_port
+                    self.controller.modifyDict(server_name, 'port', server_port)
+                    return restful(200, f'服务器<{server_name}>端口号修改成功')
+                else:
+                    return restful(405, '该值无效')
+
+        return restful(404, '无法找到该服务器')
+
     @route('check_version', methods=['GET'])
-    def del_server(self):
+    def check_version(self):
         check_type = request.args.get('type', '')
         if check_type == 'FreeKill':
-            version = self.server_list.checkFKVersion();
+            version = self.controller.checkFKVersion()
             if version:
                 return restful(200, '', {'version': version})
             else:

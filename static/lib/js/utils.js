@@ -22,13 +22,13 @@ export function showDialog(msg, title='提示', callback=null) {
           <p1 style="overflow: auto;max-height:80vh;">`+msg+`</p1>
       </div>
       <div class="modal-footer">
-          <input id="confirm_btn" class="btn" type="button" value="确定" onclick="document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());" />
+          <input id="msg_confirm_btn" class="btn" type="button" value="确定" onclick="document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());" />
       </div>
     </div>
   </div>
   `
   document.body.insertAdjacentHTML('BeforeEnd', msg_div);
-  document.getElementById('confirm_btn').addEventListener('click', callback);
+  document.getElementById('msg_confirm_btn').addEventListener('click', callback);
 }
 
 // 弹出处理框
@@ -41,21 +41,21 @@ export function showProcessingBox(msg, title='处理中', process=null) {
           <span class="close-btn" onclick="document.querySelectorAll('#process_dialog').forEach((e)=>e.remove());"></span>
       </div>
       <div class="modal-content center">
-          <p1 style="overflow: auto;max-height:80vh;">`+msg+`</p1>
+          <pre style="overflow:auto;max-height:80vh;max-width:90vw;word-wrap:break-word;white-space:pre-wrap;font-family:serif;margin:0;">`+msg+`</pre>
       </div>
       <div class="modal-footer">
           <i id="processing_icon" class="bi rotate"><b>&#xF130;</b></i>
-          <input id="confirm_btn" class="btn hide" type="button" value="确定" onclick="document.querySelectorAll('#process_dialog').forEach((e)=>e.remove());" />
+          <input id="process_confirm_btn" class="btn hide" type="button" value="确定" onclick="document.querySelectorAll('#process_dialog').forEach((e)=>e.remove());" />
       </div>
     </div>
   </div>
   `
   document.body.insertAdjacentHTML('BeforeEnd', box_div);
-  process((result, text='')=>{
+  let pre = document.querySelector('#process_dialog pre');
+  process(pre, (result)=>{
     if(result) {
       document.getElementById('processing_icon').remove();
-      document.getElementById('confirm_btn').classList.remove('hide');
-      document.querySelector('#process_dialog p1').innerHTML = text;
+      document.getElementById('process_confirm_btn').classList.remove('hide');
     } else {
       document.querySelectorAll('#process_dialog').forEach((e)=>e.remove());
     }
@@ -76,7 +76,7 @@ export function showCodeEditBox(msg, title='修改', text='', callback=null) {
           <textarea id="code_edit_box" class="code-editor">`+text+`</textarea>
       </div>
       <div class="modal-footer">
-          <input id="confirm_btn" class="btn" type="button" value="确定" />
+          <input id="code_edit_confirm_btn" class="btn" type="button" value="确定" />
       </div>
     </div>
   </div>
@@ -84,11 +84,38 @@ export function showCodeEditBox(msg, title='修改', text='', callback=null) {
   document.body.insertAdjacentHTML('BeforeEnd', box_div);
   document.getElementById('code_edit_box').style.height = (window.innerHeight - 200) + 'px';
   document.getElementById('code_edit_box').style.width = window.innerWidth - 70 + 'px';
-  document.getElementById('confirm_btn').addEventListener('click', ()=>{
-    callback();
+  document.getElementById('code_edit_confirm_btn').addEventListener('click', ()=>{
+    callback(document.getElementById('code_edit_box').value);
     document.querySelectorAll('#code_edit_dialog').forEach((e)=>e.remove());
   });
 }
+
+// 弹出文本输入框
+export function showTextBox(msg, title='修改', callback=null) {
+  let box_div = `
+  <div id="text_dialog" class="modal">
+    <div class="modal-dialog">
+      <div class="modal-title">
+          <h3>`+title+`</h3>
+          <span class="close-btn" onclick="document.querySelectorAll('#text_dialog').forEach((e)=>e.remove());"></span>
+      </div>
+      <div class="modal-content center">
+          <p1 style="overflow: auto;">`+msg+`</p1>
+          <input id="text_box" class="text_input" type="text" style="margin-top:0.5rem;text-align:center;"></input>
+      </div>
+      <div class="modal-footer">
+          <input id="text_confirm_btn" class="btn" type="button" value="确定" />
+      </div>
+    </div>
+  </div>
+  `
+  document.body.insertAdjacentHTML('BeforeEnd', box_div);
+  document.getElementById('text_confirm_btn').addEventListener('click', ()=>{
+    callback(document.getElementById('text_box').value);
+    document.querySelectorAll('#text_dialog').forEach((e)=>e.remove());
+  });
+}
+
 
 // 计算时间间隔并返回格式化日期
 export function period(now, past, format) {

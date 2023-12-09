@@ -22,6 +22,9 @@ a {
     cursor: pointer;
     color: inherit;
 }
+p {
+    margin: 0.5rem 0;
+}
 h1,h2,h3,h4,h5 {
     width: fit-content;
     margin: 0;
@@ -623,6 +626,9 @@ footer {
 .server-detail>*>span:nth-child(3) {
     min-width: 4rem;
     flex-grow: 1;
+}
+.server-detail>*>span:nth-child(n+4) {
+    word-wrap: inherit;
 }
 .server-detail>*>*:nth-child(2) {
     width: 4rem;

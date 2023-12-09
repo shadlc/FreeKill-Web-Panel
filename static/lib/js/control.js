@@ -1,5 +1,5 @@
-import { setScheme, showDialog, showProcessingBox, showCodeEditBox, convertBashColor, timeToTimeStamp, formatTime, formatSize } from './utils.js';
-import { getLatestVersion, executeCmd, getDetailInfo, startServer, stopServer, getServerConfig, setServerConfig } from './net.js'
+import { setScheme, showDialog, showProcessingBox, showTextBox, showCodeEditBox, convertBashColor, timeToTimeStamp, formatTime, formatSize } from './utils.js';
+import { getLatestVersion, executeCmd, getDetailInfo, startServer, stopServer, updateServer, getServerConfig, setServerConfig, modifyServerPort } from './net.js'
 
 // 主题相关
 const themeScheme = window.matchMedia('(prefers-color-scheme: light)');
@@ -37,7 +37,7 @@ window.onload = function() {
   refreshDetails();
   getLatestVersion((data)=>{
     if(data.retcode != 0) {
-      showDialog(data.msg, '提示');
+      showDialog(data?.msg, '提示');
     }
     document.getElementById('latest_version').innerHTML = data.data.version;
   }, base_url);
@@ -55,7 +55,7 @@ window.onload = function() {
 function refreshDetails() {
   getDetailInfo(server_name, (data)=>{
     if(data.retcode != 0) {
-      showDialog(data.msg, '提示');
+      showDialog(data?.msg, '提示');
       return;
     }
     let info = data.data;
@@ -97,6 +97,7 @@ function refreshTime() {
 let screen = document.querySelector('.terminal-screen');
 let cover = document.querySelector('.terminal-cover');
 let socket = io.connect(base_url+'?name='+server_name);
+// 实时获取游戏终端输出
 socket.on('terminal', function(data) {
   cover.style.display = 'none';
   if(data.history) {
@@ -171,7 +172,7 @@ terminal_input.addEventListener('keydown', function(e) {
         terminal_input.value,
         (data)=>{
           if(data.retcode != 0) {
-            showDialog(data.msg, '提示');
+            showDialog(data?.msg, '提示');
           }
           terminal_input.value = '';
         }, base_url
@@ -198,8 +199,8 @@ document.querySelectorAll('.terminal-btn').forEach((e)=>{
 // 启动服务器按钮
 document.getElementById('start_btn').addEventListener('click', ()=>{
   startServer(server_name, (data)=>{
+    showDialog(data?.msg);
     refreshDetails();
-    showDialog(data.msg);
   }, base_url_slash);
 });
 
@@ -208,9 +209,10 @@ document.getElementById('stop_btn').addEventListener('click', ()=>{
   showDialog('你真的要停止服务器<'+server_name+'>吗？', '警告',
   ()=>{
     stopServer(server_name, (data)=>{
+      showDialog(data?.msg);
       refreshDetails();
-      showDialog(data.msg);
-    }, base_url_slash);})
+    }, base_url_slash);
+  });
 });
 
 // 重启服务器按钮
@@ -220,23 +222,24 @@ document.getElementById('restart_btn').addEventListener('click', ()=>{
     showProcessingBox(
       '重启服务器中...',
       '提示',
-      (callback)=>{
+      (pre, final_callback)=>{
         stopServer(server_name, (data)=>{
-          if(data.retcode != 0) {
-            showDialog(data.msg, '提示', ()=>{
-              callback(false);
-            });
-            
-          } else {
+          if(data?.retcode == 0 || data.code == 405) {
+            pre.innerHTML += '\n服务器停止成功';
             startServer(server_name, (data)=>{
-              if(data.retcode != 0) {
-                showDialog(data.msg, '提示', ()=>{
-                  callback(false);
-                });
+              if(data?.retcode == 0) {
+                pre.innerHTML += '\n服务器重启成功';
+                final_callback(true);
               } else {
-                callback(true, '服务器重启成功');
+                showDialog(data?.msg, '提示', ()=>{
+                  final_callback(false);
+                });
               }
+              refreshDetails();
             }, base_url_slash);
+          } else {
+            final_callback(false);
+            showDialog(data?.msg);
           }
         }, base_url_slash);
       }
@@ -244,30 +247,57 @@ document.getElementById('restart_btn').addEventListener('click', ()=>{
   })
 });
 
+// 更新服务器按钮
+document.getElementById('update_btn').addEventListener('click', ()=>{
+  const server_version = document.getElementById('server_version').innerHTML;
+  const latest_version = document.getElementById('latest_version').innerHTML;
+  if(server_version != latest_version) {
+    updateServer(server_name, base_url);
+  } else {
+    showDialog('服务器已经是最新版本，是否强制更新？', '提示', ()=>{
+      updateServer(server_name, ()=>{
+        refreshDetails();
+      }, base_url_slash);
+    });
+  }
+});
+
+// 修改服务器端口按钮
+document.getElementById('port_config_btn').addEventListener('click', ()=>{
+  showTextBox(
+    '请输入新端口号',
+    '端口修改',
+    (port)=>{
+      modifyServerPort(server_name, port, (data)=>{
+        showDialog(data?.msg);
+        refreshDetails();
+      }, base_url_slash)
+    }
+  );
+});
+
 // 修改服务器配置按钮
 document.getElementById('config_btn').addEventListener('click', ()=>{
   showProcessingBox(
     '获取配置文件中...',
     '提示',
-    (callback)=>{
+    (pre, final_callback)=>{
       getServerConfig(server_name, (data)=>{
-        if(data.retcode != 0) {
-          showDialog(data.msg, '提示', ()=>{
-            callback(false);
-          });
-        } else {
-          callback(false);
+        if(data?.retcode == 0) {
+          final_callback(false);
           showCodeEditBox(
             '请在下方方框中修改新月杀配置并保存',
             '配置修改',
             data.data.config,
-            ()=>{
-              let config = document.getElementById('code_edit_box').value;
+            (config)=>{
               setServerConfig(server_name, config, (data)=>{
-                showDialog(data.msg);
+                showDialog(data?.msg);
               }, base_url_slash)
             }
           );
+        } else {
+          final_callback(false);
+          showDialog(data?.msg);
         }
       }, base_url_slash);
     }

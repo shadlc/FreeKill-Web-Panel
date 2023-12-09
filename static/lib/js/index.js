@@ -29,7 +29,7 @@ window.onload = function() {
   refresh_servers();
 
   setInterval(() => {
-    document.querySelectorAll('.server-time').forEach((e)=>{
+    document.querySelectorAll('span.server-time').forEach((e)=>{
       let origin_time = e.innerText;
       if(origin_time != '0') {
         let calc_time = addSecondsToTime(origin_time, 1);
@@ -69,15 +69,15 @@ function render_server_list(servers){
                 <span class="server-pid">`+info.pid+`</span>
             </a>
             <div class="capsule-box">
-                <i class="bi">&#xF4FF;</i>
+                <i class="bi server-status">&#xF4FF;</i>
                 <span class="server-status">`+info.status+`</span>
-                <i class="bi">&#xF6D5;</i>
+                <i class="bi server-port">&#xF6D5;</i>
                 <span class="server-port">`+info.port+`</span>
-                <i class="bi">&#xF4CF;</i>
+                <i class="bi server-players">&#xF4CF;</i>
                 <span class="server-players">`+info.players+'/'+info.capacity+`</span>
-                <i class="bi">&#xF69D;</i>
+                <i class="bi server-version">&#xF69D;</i>
                 <span class="server-version">`+info.version+`</span>
-                <i class="bi">&#xF293;</i>
+                <i class="bi server-time">&#xF293;</i>
                 <span class="server-time">`+info.runtime+`</span>
             </div>
         </div>
@@ -138,28 +138,28 @@ function initServerToggleBtn() {
           window.open('control/'+server_name);
         } else if(span.innerText.includes('启动')) {
           startServer(server_name, (data)=>{
-            if(data.retcode == 0) {
+            if(data?.retcode == 0) {
               document.querySelector('#server'+server_pid).remove();
             }
+            showDialog(data?.msg);
             refresh_servers();
-            showDialog(data.msg);
           });
         } else if(span.innerText.includes('停止')) {
           showDialog('你真的要停止服务器<'+server_name+'>吗？', '警告',
           ()=>{
             stopServer(server_name, (data)=>{
+            showDialog(data?.msg);
             refresh_servers();
-            showDialog(data.msg);
           });})
         } else if(span.innerText.includes('删除')) {
-          showDialog('你真的要停止并删除服务器<'+server_name+'>吗？', '警告',
+          showDialog('你真的要删除服务器<'+server_name+'>吗？', '警告',
           ()=>{
             deleteServer(server_name, (data)=>{
-            if(data.retcode == 0) {
+            if(data?.retcode == 0) {
                 document.querySelector('#server'+server_pid).remove();
             }
+            showDialog(data?.msg);
             refresh_servers();
-            showDialog(data.msg);
           });})
         }
       });
@@ -211,8 +211,8 @@ function add_server(callback) {
     body: JSON.stringify(data)
   }).then(res => res.json())
     .then(data => {
-      showDialog(data.msg, '提示', ()=>{
-        if(data.retcode == 0) {
+      showDialog(data?.msg, '提示', ()=>{
+        if(data?.retcode == 0) {
           refresh_servers();
           document.getElementById('add_modal').style.display = 'none';
         }

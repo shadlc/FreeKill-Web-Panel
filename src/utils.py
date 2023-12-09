@@ -70,10 +70,10 @@ def getProcessRuntime(pid: int) -> str:
     return runtime
 
 # 获取正在运行的FreeKill服务器列表以及其信息
-def getServerList() -> list[str]:
+def getController() -> list[str]:
     command = ''' ps -ef | grep -E '\?.*tmux\s+.*FreeKill-.*FreeKill -s' | awk '{print $12" "$2" "$15}' '''
     running = runCmd(command)
-    server_list = running if running else ''
+    controller = running if running else ''
 
     command = ''' ps -ef | grep -vE '(tee|grep)' | grep './FreeKill -s' | awk '{print $10" "$2}' '''
     port_pid = runCmd(command)
@@ -84,13 +84,13 @@ def getServerList() -> list[str]:
     for item in port_pid_list:
         if item == ['']: continue
         port_pid_dict[item[0]] = item[1]
-    server_list = [i.split(' ') for i in [j for j in server_list.split('\n')]]
-    for item in server_list:
+    controller = [i.split(' ') for i in [j for j in controller.split('\n')]]
+    for item in controller:
         if item == ['']: continue
         item[0] = item[0].replace('FreeKill-', '')
         if item[2] in port_pid_dict:
             item[1] = int(port_pid_dict[item[2]])
-    return server_list
+    return controller
 
 # 通过PID获取程序的执行路径
 def getProcPathByPid(pid: int) -> str:
@@ -155,7 +155,8 @@ def restful(code: int, msg: str = '', data: dict = {}) -> None:
 # 启动服务器,返回PID
 def startGameServer(name: str, port: int, path: str) -> int:
     command = f''' cd {path};tmux new -d -s "FreeKill-{name}" "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
-    print(f' >>> 独立进程   执行指令 {command}')
+    if '--debug' in sys.argv[1:]:
+        print(f' >>> 独立进程   执行指令 {command}')
     subprocess.Popen([command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).wait()
     command = ''' ps -ef | grep -vE '(tee|grep)' | grep './FreeKill -s ''' + str(port) + '''' | awk '{print $2}' '''
     result = ''
@@ -187,6 +188,42 @@ def deleteGameServer(server_name: str) -> str:
         return saveServerToConfig(server_dict)
     return '服务器已经不存在'
 
+# 更新服务器
+def updateGameServer(server_name: str) -> str:
+    server_path = ''
+    server_dict = getServerFromConfig()
+    for name in server_dict:
+        if name == server_name:
+            server_path = server_dict[name][1]
+    update_cmd = f'''
+        cd {server_path} \
+        && echo "正在读取最新版本...\n" \
+        && git reset --hard 2>&1 \
+        && git pull --tags origin master 2>&1 \
+        && latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`) 2>&1 \
+        && git checkout $latest_tag 2>&1 \
+        && echo "\n正在编译...\n" \
+        && [ -f include/lua.h ] || cp -r /usr/include/lua5.4/* include \
+        && [ -d build ] || mkdir build \
+        && cd build \
+        && cmake .. \
+        && make \
+        && [ -f FreeKill ] || ln -s build/FreeKill
+    '''
+    if '--debug' in sys.argv[1:]:
+        print(f' >>> 独立进程   执行指令' + update_cmd.replace('\n', '').replace('    ',''))
+    process = subprocess.Popen(update_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, universal_newlines=True)
+    while True:
+        output = process.stdout.readline()
+        if output:
+            print(output)
+            yield f'event: message\ndata: {output}\n\n'
+        elif process.poll() is not None:
+            if process.poll() == 0:
+                yield f'event: message\ndata: <span class="green">服务器更新成功</span>\n\n'
+            else:
+                yield f'event: message\ndata: <span class="red">服务器更新失败，错误码：{process.poll()}</span><br>\n\n'
+            return
 # 读取游戏配置文件
 def readGameConfig(path: str) -> [bool, str]:
     try:
@@ -201,7 +238,8 @@ def writeGameConfig(path: str, config: dict) -> str | None:
     try:
         config_json = json.load(open(f'{path}/freekill.server.config.json'))
         for key in config:
-            config_json[key] = config[key]
+            if config[key]:
+                config_json[key] = config[key]
         json.dump(config_json, open(f'{path}/freekill.server.config.json', 'w'), ensure_ascii=False, indent=2)
     except Exception as e:
         return e
@@ -303,8 +341,8 @@ def tailLog(conn: Connection, sid: str) -> None:
     try:
         date = time.strftime('%m/%d %H:%M:%S', time.localtime())
         path = ''
-        server_list = getServerList()
-        for server in server_list:
+        controller = getController()
+        for server in controller:
             if conn.clients[sid].get('name') == server[0]:
                 path = getProcPathByPid(server[1])
 
@@ -346,7 +384,7 @@ def appendFile(path: str, content: str) -> str | None:
 # 持续返回性能参数
 def queryPerf(conn: Connection, sid: str) -> None:
     try:
-        for server_info in getServerList():
+        for server_info in getController():
             name = conn.clients[sid].get('name')
             if name == server_info[0]:
                 conn.set(name, 'pid', server_info[1])

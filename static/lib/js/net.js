@@ -1,4 +1,4 @@
-import { showDialog } from './utils.js';
+import { showDialog, showProcessingBox } from './utils.js';
 
 // GET Method
 function get(url, callback) {
@@ -7,14 +7,18 @@ function get(url, callback) {
   }).then(res => {
     const contentType = res.headers.get('content-type');
     if(contentType == 'application/json') {
-      return res.json()
+      return res.json();
     } else {
       res.text().then(text => {
-        showDialog(text)
+        showDialog(text);
+        return null;
       });
     }
   }).then(data => callback(data))
-    .catch(error => showDialog(error, '请求出错'));
+    .catch(error => {
+      showDialog(error, '请求出错');
+      callback();
+  });
 }
 
 // POST Method
@@ -26,14 +30,18 @@ function post(url, data, callback) {
   }).then(res => {
     const contentType = res.headers.get('content-type');
     if(contentType == 'application/json') {
-      return res.json()
+      return res.json();
     } else {
       res.text().then(text => {
-        showDialog(text)
+        showDialog(text);
+        return null;
       });
     }
   }).then(data => callback(data))
-    .catch(error => showDialog(error, '请求出错'));
+    .catch(error => {
+      showDialog(error, '请求出错');
+      callback();
+  });
 }
 
 // 获取服务器列表
@@ -54,6 +62,47 @@ export function stopServer(name, callback, base_url='') {
 // 删除服务器
 export function deleteServer(name, callback, base_url='') {
   get(base_url + 'v1/del_server?name='+name, callback);
+}
+
+// 更新服务器
+export function updateServer(name, callback, base_url='') {
+  showDialog(
+    `
+    你真的要更新服务器<`+name+`>吗？<br>您的服务器将会执行如下指令
+    <details>
+      <summary>更新指令</summary>
+      <p>git reset --hard</p>
+      <p>git pull --tags origin master</p>
+      <p>latest_tag=$(git describe --tags \`git rev-list --tags --max-count=1\`)</p>
+      <p>git checkout $latest_tag</p>
+      <p>[ -f include/lua.h ] || cp -r /usr/include/lua5.4/* include</p>
+      <p>[ -d build ] || mkdir build</p>
+      <p>cd build</p>
+      <p>cmake .. -DFK_SERVER_ONLY=</p>
+      <p>make</p>
+      <p>[ -f FreeKill ] || ln -s build/FreeKill</p>
+    </details>
+    `,
+    '警告',
+    ()=>{
+      showProcessingBox(
+        '更新服务器中...',
+        '提示',
+        (pre, final_callback)=>{
+          let eventSource = new EventSource(base_url + '/v1/update_server?name='+name);
+          eventSource.onmessage = (event)=>{
+            pre.innerHTML += '\n'+event.data;
+            pre.scrollTop = pre.scrollHeight - pre.clientHeight;
+          };
+          eventSource.onerror = ()=>{
+              eventSource.close();
+              final_callback(true);
+              callback();
+          };
+        }
+      );
+    }
+  );
 }
 
 // 获取FreeKill最新版本
@@ -82,4 +131,10 @@ export function getServerConfig(name, callback, base_url='') {
 export function setServerConfig(name, config, callback, base_url='') {
   let data = {'name': name, 'config': config};
   post(base_url + '/v1/config', data, callback);
+}
+
+// 修改服务器端口
+export function modifyServerPort(name, port, callback, base_url='') {
+  let data = {'name': name, 'port': port};
+  post(base_url + '/v1/modify', data, callback);
 }

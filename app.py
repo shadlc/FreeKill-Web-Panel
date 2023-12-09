@@ -4,7 +4,7 @@ from flask_socketio import SocketIO
 
 from src.utils import runCmd, tailLog, queryPerf
 from src.v1 import V1API
-from src.game_server import ServerList
+from src.game_server import Controller
 from src.connection import Connection
 
 app = Flask(__name__, static_folder='static', static_url_path='/')
@@ -12,8 +12,8 @@ app.json.ensure_ascii = False
 socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins="*")
 
 conn = Connection(socketio)
-server_list = ServerList()
-server_list.connection = conn
+controller = Controller()
+controller.connection = conn
 
 @app.route('/')
 def index():
@@ -42,5 +42,5 @@ if __name__ == '__main__':
         print('未检测到tmux，请安装后继续')
     else:
         V1API.register(app, route_base='/v1')
-        V1API.server_list = server_list
+        V1API.controller = controller
         socketio.run(app, '127.0.0.1', 9500, debug=True)

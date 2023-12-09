@@ -1,7 +1,7 @@
 import json
 import time
 
-from src.utils import getProcessRuntime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, startGameServer, getServerList, getServerFromConfig, saveServerToConfig, getPlayerList, getRoomList, getPackList, getFKVersion
+from src.utils import getProcessRuntime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, startGameServer, getController, getServerFromConfig, saveServerToConfig, getPlayerList, getRoomList, getPackList, getFKVersion
 from src.connection import Connection
 
 class Server:
@@ -59,8 +59,8 @@ class Server:
             self.status = '已停止'
         else:
             self.status = '运行中'
-            server_list = getServerList()
-            for server_info in server_list:
+            controller = getController()
+            for server_info in controller:
                 server_name = server_info[0] if len(server_info) else ''
                 server_pid = int(server_info[1]) if len(server_info) >=2 else self.pid
                 if self.name == server_name:
@@ -128,19 +128,19 @@ class Server:
     def readPacks(self) -> None:
         self.pack_dict = getPackList(self.name)
 
-class ServerList:
+class Controller:
     def __init__(self) -> None:
-        self.dict = {}
+        self.server_dict = {}
         self.list: list[Server | None] = []
         self.connection: Connection | None
         self.latest_fk_version = ''
         self.version_check_timestamp = 0
         
         self.refreshRunning()
-        self.dict = getServerFromConfig()
-        for server_name in self.dict:
-            server_port = self.dict[server_name][0]
-            server_path = self.dict[server_name][1]
+        self.server_dict = getServerFromConfig()
+        for server_name in self.server_dict:
+            server_port = self.server_dict[server_name][0]
+            server_path = self.server_dict[server_name][1]
 
             if server_name not in [server.name for server in self.list]:
                 server = Server()
@@ -148,7 +148,7 @@ class ServerList:
                 self.list.append(server)
 
     def refreshRunning(self) -> None:
-        for server_info in getServerList():
+        for server_info in getController():
             server_name = server_info[0] if len(server_info) else ''
             server_pid = int(server_info[1]) if len(server_info) >1 else 0
             server_port = int(server_info[2]) if len(server_info) >2 else 9527
@@ -159,11 +159,11 @@ class ServerList:
                 self.list.append(server)
 
         for server in self.list:
-            if not isPortBusy(server.port) and server.name not in self.dict:
+            if not isPortBusy(server.port) and server.name not in self.server_dict:
                 self.list.remove(server)
     
     def refreshConfig(self) -> None:
-        self.dict = getServerFromConfig()
+        self.server_dict = getServerFromConfig()
 
     def getList(self) -> list[Server]:
         self.refreshRunning()
@@ -171,18 +171,28 @@ class ServerList:
     
     def add(self, server: Server) -> None:
         self.list.append(server)
-        self.dict[server.name] = [server.port, server.path]
-        saveServerToConfig(self.dict)
+        self.server_dict[server.name] = [server.port, server.path]
+        saveServerToConfig(self.server_dict)
     
     def remove(self, server: Server) -> None:
         self.list.remove(server)
 
     def getDict(self) -> dict:
         self.refreshRunning()
-        return self.dict
+        return self.server_dict
+
+    def modifyDict(self, name, key, value) -> None:
+        if key == 'port':
+            self.server_dict[name][0] = value
+        elif key == 'path':
+            self.server_dict[name][1] = value
+        self.saveDict()
+
+    def saveDict(self) -> bool:
+        return saveServerToConfig(self.server_dict)
     
     def checkFKVersion(self) -> str:
-        if not self.latest_fk_version or time.time() - self.version_check_timestamp > 3600:
+        if not self.latest_fk_version or time.time() - self.version_check_timestamp > 600:
             self.latest_fk_version = getFKVersion()
             self.version_check_timestamp = int(time.time())
         return self.latest_fk_version
