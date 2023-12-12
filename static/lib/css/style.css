@@ -612,6 +612,13 @@ footer {
     flex-shrink: 1;
     flex-basis: 50%;
 }
+.server-detail #server_motd {
+    max-height: 3rem;
+    cursor: pointer;
+    white-space: pre-wrap;
+    overflow: hidden;
+    overflow-y: auto;
+}
 .server-detail>* {
     margin: 0.2rem 0.2rem;
 }
@@ -624,6 +631,7 @@ footer {
     flex-basis: 25%;
 }
 .server-detail>*>span:nth-child(3) {
+    overflow-x: hidden;
     min-width: 4rem;
     flex-grow: 1;
 }

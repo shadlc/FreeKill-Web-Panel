@@ -1,7 +1,7 @@
 import json
 import time
 
-from src.utils import getProcessRuntime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, startGameServer, getController, getServerFromConfig, saveServerToConfig, getPlayerList, getRoomList, getPackList, getFKVersion
+from src.utils import getProcessRuntime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, startGameServer, getServerList, getServerFromConfig, saveServerToConfig, getPlayerList, getRoomList, getPackList, getFKVersion
 from src.connection import Connection
 
 class Server:
@@ -59,8 +59,8 @@ class Server:
             self.status = '已停止'
         else:
             self.status = '运行中'
-            controller = getController()
-            for server_info in controller:
+            server_list = getServerList()
+            for server_info in server_list:
                 server_name = server_info[0] if len(server_info) else ''
                 server_pid = int(server_info[1]) if len(server_info) >=2 else self.pid
                 if self.name == server_name:
@@ -148,7 +148,7 @@ class Controller:
                 self.list.append(server)
 
     def refreshRunning(self) -> None:
-        for server_info in getController():
+        for server_info in getServerList():
             server_name = server_info[0] if len(server_info) else ''
             server_pid = int(server_info[1]) if len(server_info) >1 else 0
             server_port = int(server_info[2]) if len(server_info) >2 else 9527

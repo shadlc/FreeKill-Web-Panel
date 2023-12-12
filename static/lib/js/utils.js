@@ -1,5 +1,13 @@
 // 更改主题
-export function setScheme(mode) {
+export function changeScheme(mode) {
+  if (mode != 'light' && mode != 'dark') {
+    let scheme = getComputedStyle(document.querySelector('html')).colorScheme;
+    if (scheme == 'light') {
+      mode = 'dark';
+    } else {
+      mode = 'light'
+    }
+  }
   if (mode == 'light') {
     document.querySelector('html').style.colorScheme = 'light';
     color_scheme.classList.remove('dark');
@@ -10,7 +18,7 @@ export function setScheme(mode) {
 }
 
 // 弹出提示框
-export function showDialog(msg, title='提示', callback=null) {
+export function showDialog(msg, title='提示', callback=null, pre=false) {
   let msg_div = `
   <div id="msg_dialog" class="modal">
     <div class="modal-dialog">
@@ -19,7 +27,7 @@ export function showDialog(msg, title='提示', callback=null) {
           <span class="close-btn" onclick="document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());"></span>
       </div>
       <div class="modal-content center">
-          <p1 style="overflow: auto;max-height:80vh;">`+msg+`</p1>
+          <p1 style="overflow:auto;max-height:80vh;width:100%;text-align:center;">`+msg+`</p1>
       </div>
       <div class="modal-footer">
           <input id="msg_confirm_btn" class="btn" type="button" value="确定" onclick="document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());" />
@@ -28,6 +36,9 @@ export function showDialog(msg, title='提示', callback=null) {
   </div>
   `
   document.body.insertAdjacentHTML('BeforeEnd', msg_div);
+  if (pre) {
+    document.querySelectorAll('#msg_dialog p1').forEach((e)=>e.style.whiteSpace = 'pre-wrap');
+  }
   document.getElementById('msg_confirm_btn').addEventListener('click', callback);
 }
 
@@ -257,9 +268,9 @@ export function formatSize(value) {
   return size + unitArray[index];
 }
 
-// 获取新月杀最新版本号(域名不一致，不可实现)
+// 获取新月杀最新版本号(不允许跨域访问，不可实现)
 // export function getFreeKillLatestVersion() {
-//   fetch('https://gitee.com/notify-ctrl/FreeKill/releases/latest')
+//   fetch('https://github.com/notify-ctrl/FreeKill/releases/latest')
 //   .then(response => {
 //     if (response.ok) {
 //       return response.url;

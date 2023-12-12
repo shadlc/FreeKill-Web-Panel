@@ -1,26 +1,18 @@
-import { setScheme, showDialog, addSecondsToTime } from './utils.js'
+import { changeScheme, showDialog, addSecondsToTime } from './utils.js'
 import { getServerList, startServer, stopServer, deleteServer } from './net.js'
 
 // 主题相关
 const themeScheme = window.matchMedia('(prefers-color-scheme: light)');
-document.getElementById('color_scheme').addEventListener('click', changeScheme);
 themeScheme.addEventListener('change', (e)=>{
   if (themeScheme.matches) {
-    setScheme('light');
+    changeScheme('light');
   } else {
-    setScheme('dark');
+    changeScheme('dark');
   }
 });
+document.getElementById('color_scheme').addEventListener('click', changeScheme);
 const evt = new Event('change', { bubbles: true, cancelable: true });
 themeScheme.dispatchEvent(evt);
-
-function changeScheme(){
-  if (getComputedStyle(document.querySelector('html')).colorScheme == 'light') {
-    setScheme('dark');
-  } else {
-    setScheme('light');
-  }
-}
 
 // 页面加载完毕后触发
 window.onload = function() {

@@ -26,7 +26,7 @@ def getImgBase64FromURL(url: str) -> str:
 # 取得FreeKill最新版本
 def getFKVersion() -> str | None:
     try:
-        url = 'https://gitee.com/notify-ctrl/FreeKill/releases/latest'
+        url = 'https://github.com/notify-ctrl/FreeKill/releases/latest'
         response = requests.get(url)
         if response.status_code == 200:
             version = response.url.split('/').pop()
@@ -70,27 +70,31 @@ def getProcessRuntime(pid: int) -> str:
     return runtime
 
 # 获取正在运行的FreeKill服务器列表以及其信息
-def getController() -> list[str]:
-    command = ''' ps -ef | grep -E '\?.*tmux\s+.*FreeKill-.*FreeKill -s' | awk '{print $12" "$2" "$15}' '''
-    running = runCmd(command)
-    controller = running if running else ''
+def getServerList() -> list[str]:
+    command = ''' tmux ls -F "#{session_name} #{pane_pid}" '''
+    name_pid = runCmd(command)
+    name_pid_list = name_pid if name_pid else ''
+    name_pid_list = [i.split(' ') for i in [j for j in name_pid.split('\n')]]
 
-    command = ''' ps -ef | grep -vE '(tee|grep)' | grep './FreeKill -s' | awk '{print $10" "$2}' '''
-    port_pid = runCmd(command)
-    port_pid_list = port_pid if port_pid else ''
+    command = ''' ps -ef | grep -vE '(tee|grep)' | grep './FreeKill -s' | awk '{print $2" "$10}' '''
+    pid_port = runCmd(command)
+    pid_port_list = pid_port if pid_port else ''
+    pid_port_list = [i.split(' ') for i in [j for j in pid_port.split('\n')]]
 
-    port_pid_list = [i.split(' ') for i in [j for j in port_pid.split('\n')]]
-    port_pid_dict = {}
-    for item in port_pid_list:
+    pid_port_dict = {}
+    for item in pid_port_list:
         if item == ['']: continue
-        port_pid_dict[item[0]] = item[1]
-    controller = [i.split(' ') for i in [j for j in controller.split('\n')]]
-    for item in controller:
+        pid_port_dict[item[0]] = item[1]
+
+    server_list = []
+    for item in name_pid_list:
         if item == ['']: continue
-        item[0] = item[0].replace('FreeKill-', '')
-        if item[2] in port_pid_dict:
-            item[1] = int(port_pid_dict[item[2]])
-    return controller
+        name = item[0].replace('FreeKill-', '')
+        pid = item[1]
+        if pid in pid_port_dict:
+            port = pid_port_dict[pid]
+            server_list.append(name, pid, port)
+    return server_list
 
 # 通过PID获取程序的执行路径
 def getProcPathByPid(pid: int) -> str:
@@ -342,8 +346,8 @@ def tailLog(conn: Connection, sid: str) -> None:
     try:
         date = time.strftime('%m/%d %H:%M:%S', time.localtime())
         path = ''
-        controller = getController()
-        for server in controller:
+        server_list = getServerList()
+        for server in server_list:
             if conn.clients[sid].get('name') == server[0]:
                 path = getProcPathByPid(server[1])
 
@@ -385,7 +389,7 @@ def appendFile(path: str, content: str) -> str | None:
 # 持续返回性能参数
 def queryPerf(conn: Connection, sid: str) -> None:
     try:
-        for server_info in getController():
+        for server_info in getServerList():
             name = conn.clients[sid].get('name')
             if name == server_info[0]:
                 conn.set(name, 'pid', server_info[1])

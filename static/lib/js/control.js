@@ -1,26 +1,18 @@
-import { setScheme, showDialog, showProcessingBox, showTextBox, showCodeEditBox, convertBashColor, timeToTimeStamp, formatTime, formatSize } from './utils.js';
+import { changeScheme, showDialog, showProcessingBox, showTextBox, showCodeEditBox, convertBashColor, timeToTimeStamp, formatTime, formatSize } from './utils.js';
 import { getLatestVersion, executeCmd, getDetailInfo, startServer, stopServer, updateServer, getServerConfig, setServerConfig, modifyServerPort } from './net.js'
 
 // 主题相关
 const themeScheme = window.matchMedia('(prefers-color-scheme: light)');
-document.getElementById('color_scheme').addEventListener('click', changeScheme);
 themeScheme.addEventListener('change', (e)=>{
   if (themeScheme.matches) {
-    setScheme('light');
+    changeScheme('light');
   } else {
-    setScheme('dark');
+    changeScheme('dark');
   }
 });
+document.getElementById('color_scheme').addEventListener('click', changeScheme);
 const evt = new Event('change', { bubbles: true, cancelable: true });
 themeScheme.dispatchEvent(evt);
-
-function changeScheme(){
-  if (getComputedStyle(document.querySelector('html')).colorScheme == 'light') {
-    setScheme('dark');
-  } else {
-    setScheme('light');
-  }
-}
 
 // 获取当前服务器名URL
 const server_name = decodeURIComponent(window.location.pathname.split('/').pop());
@@ -48,6 +40,10 @@ window.onload = function() {
 
   document.querySelector('#refresh_btn').addEventListener('click', ()=>{
     location.reload();
+  });
+
+  document.querySelector('#server_motd').addEventListener('click', ()=>{
+    showDialog(document.querySelector('#server_motd')?.innerHTML, '公告', undefined, true);
   });
 };
 
