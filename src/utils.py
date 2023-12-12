@@ -73,12 +73,12 @@ def getProcessRuntime(pid: int) -> str:
 def getServerList() -> list[str]:
     command = ''' tmux ls -F "#{session_name} #{pane_pid}" '''
     name_p_pid = runCmd(command)
-    name_p_pid_list = name_p_pid if name_p_pid else ''
+    name_p_pid = name_p_pid if name_p_pid else ''
     name_p_pid_list = [i.split(' ') for i in [j for j in name_p_pid.split('\n')]]
 
     command = ''' ps -ef | grep -vE '(tee|grep)' | grep './FreeKill -s' | awk '{print $3" "$2" "$10}' '''
     pid_port = runCmd(command)
-    pid_port_list = pid_port if pid_port else ''
+    pid_port = pid_port if pid_port else ''
     pid_port_list = [i.split(' ') for i in [j for j in pid_port.split('\n')]]
 
     pid_port_dict = {}
