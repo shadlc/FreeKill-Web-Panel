@@ -27,12 +27,6 @@ let start_time = 0;
 // 页面加载完毕后触发
 window.onload = function() {
   refreshDetails();
-  getLatestVersion((data)=>{
-    if(data.retcode != 0) {
-      showDialog(data?.msg, '提示');
-    }
-    document.getElementById('latest_version').innerHTML = data.data.version;
-  }, base_url);
 
   setInterval(() => {
     refreshTime();
@@ -45,6 +39,13 @@ window.onload = function() {
   document.querySelector('#server_motd').addEventListener('click', ()=>{
     showDialog(document.querySelector('#server_motd')?.innerHTML, '公告', undefined, true);
   });
+
+  getLatestVersion((data)=>{
+    if(data.retcode != 0) {
+      showDialog(data?.msg, '提示');
+    }
+    document.getElementById('latest_version').innerHTML = data.data.version;
+  }, base_url);
 };
 
 // 刷新服务器详细信息

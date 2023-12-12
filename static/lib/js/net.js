@@ -1,7 +1,7 @@
 import { showDialog, showProcessingBox } from './utils.js';
 
 // GET Method
-function get(url, callback) {
+async function get(url, callback) {
   fetch(url, {
     method:'GET'
   }).then(res => {
@@ -22,7 +22,7 @@ function get(url, callback) {
 }
 
 // POST Method
-function post(url, data, callback) {
+async function post(url, data, callback) {
   fetch(url, {
     method:'POST',
     headers: {'Content-Type': 'application/json'},
