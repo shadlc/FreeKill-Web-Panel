@@ -23,7 +23,7 @@ class Server:
         self.players = 0
         self.status = '初始化'
         self.version = 'v0.0.1'
-        
+
         self.player_dict = {}
         self.room_dict = {}
         self.pack_dict = {}
@@ -89,7 +89,7 @@ class Server:
             self.readPacks()
         info_dict = self.info()
         info_dict = {
-            **info_dict, 
+            **info_dict,
             'ban_words': self.ban_words,
             'motd': self.motd,
             'temp_ban_time': self.temp_ban_time,
@@ -135,7 +135,7 @@ class Controller:
         self.connection: Connection | None
         self.latest_fk_version = ''
         self.version_check_timestamp = 0
-        
+
         self.refreshRunning()
         self.server_dict = getServerFromConfig()
         for server_name in self.server_dict:
@@ -161,19 +161,19 @@ class Controller:
         for server in self.list:
             if not isPortBusy(server.port) and server.name not in self.server_dict:
                 self.list.remove(server)
-    
+
     def refreshConfig(self) -> None:
         self.server_dict = getServerFromConfig()
 
     def getList(self) -> list[Server]:
         self.refreshRunning()
         return self.list
-    
+
     def add(self, server: Server) -> None:
         self.list.append(server)
         self.server_dict[server.name] = [server.port, server.path]
         saveServerToConfig(self.server_dict)
-    
+
     def remove(self, server: Server) -> None:
         self.list.remove(server)
 
@@ -190,7 +190,7 @@ class Controller:
 
     def saveDict(self) -> bool:
         return saveServerToConfig(self.server_dict)
-    
+
     def checkFKVersion(self) -> str:
         if not self.latest_fk_version or time.time() - self.version_check_timestamp > 600:
             self.latest_fk_version = getFKVersion()

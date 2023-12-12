@@ -72,11 +72,11 @@ def getProcessRuntime(pid: int) -> str:
 # 获取正在运行的FreeKill服务器列表以及其信息
 def getServerList() -> list[str]:
     command = ''' tmux ls -F "#{session_name} #{pane_pid}" '''
-    name_pid = runCmd(command)
-    name_pid_list = name_pid if name_pid else ''
-    name_pid_list = [i.split(' ') for i in [j for j in name_pid.split('\n')]]
+    name_p_pid = runCmd(command)
+    name_p_pid_list = name_p_pid if name_p_pid else ''
+    name_p_pid_list = [i.split(' ') for i in [j for j in name_p_pid.split('\n')]]
 
-    command = ''' ps -ef | grep -vE '(tee|grep)' | grep './FreeKill -s' | awk '{print $2" "$10}' '''
+    command = ''' ps -ef | grep -vE '(tee|grep)' | grep './FreeKill -s' | awk '{print $3" "$2" "$10}' '''
     pid_port = runCmd(command)
     pid_port_list = pid_port if pid_port else ''
     pid_port_list = [i.split(' ') for i in [j for j in pid_port.split('\n')]]
@@ -84,16 +84,17 @@ def getServerList() -> list[str]:
     pid_port_dict = {}
     for item in pid_port_list:
         if item == ['']: continue
-        pid_port_dict[item[0]] = item[1]
+        pid_port_dict[item[0]] = [item[1], item[2]]
 
     server_list = []
-    for item in name_pid_list:
+    for item in name_p_pid_list:
         if item == ['']: continue
         name = item[0].replace('FreeKill-', '')
-        pid = item[1]
-        if pid in pid_port_dict:
-            port = pid_port_dict[pid]
-            server_list.append(name, pid, port)
+        p_pid = item[1]
+        if p_pid in pid_port_dict:
+            pid = pid_port_dict[p_pid][0]
+            port = pid_port_dict[p_pid][1]
+            server_list.append([name, pid, port])
     return server_list
 
 # 通过PID获取程序的执行路径
