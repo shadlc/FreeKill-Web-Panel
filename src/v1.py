@@ -5,7 +5,8 @@ from flask import Response
 from flask_classful import FlaskView, route, request
 
 from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, appendFile
-from src.game_server import Server, Controller
+from src.game_server import Server
+from src.controller import Controller
 
 class V1API(FlaskView):
     

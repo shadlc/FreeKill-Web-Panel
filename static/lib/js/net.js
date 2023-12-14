@@ -1,7 +1,7 @@
 import { showDialog, showProcessingBox } from './utils.js';
 
 // GET Method
-async function get(url, callback) {
+function get(url, callback) {
   fetch(url, {
     method:'GET'
   }).then(res => {

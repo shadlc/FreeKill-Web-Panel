@@ -40,12 +40,14 @@ window.onload = function() {
     showDialog(document.querySelector('#server_motd')?.innerHTML, '公告', undefined, true);
   });
 
-  getLatestVersion((data)=>{
-    if(data.retcode != 0) {
-      showDialog(data?.msg, '提示');
-    }
-    document.getElementById('latest_version').innerHTML = data.data.version;
-  }, base_url);
+  setTimeout(()=>{
+    getLatestVersion((data)=>{
+      if(data.retcode != 0) {
+        showDialog(data?.msg, '提示');
+      }
+      document.getElementById('latest_version').innerHTML = data.data.version;
+    }, base_url);
+  }, 1000);
 };
 
 // 刷新服务器详细信息

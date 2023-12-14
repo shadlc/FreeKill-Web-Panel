@@ -636,7 +636,7 @@ footer {
     flex-grow: 1;
 }
 .server-detail>*>span:nth-child(n+4) {
-    word-wrap: inherit;
+    white-space: nowrap;
 }
 .server-detail>*>*:nth-child(2) {
     width: 4rem;

@@ -3,6 +3,7 @@ import sys
 import json
 import time
 import base64
+import sqlite3
 import requests
 import subprocess
 
@@ -301,8 +302,13 @@ def getRoomList(name: str) -> dict:
     return room_dict
 
 # 获取指定服务器扩充包
-def getPackList(name: str) -> dict:
-    ...
+def getPackList(path: str,) -> dict:
+    conn = sqlite3.connect(f'{path}/packages/packages.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM packages')
+    pack_list: list[tuple] = cursor.fetchall()
+    pack_dict = {pack[0]: pack[1:] for pack in pack_list}
+    return pack_dict
 
 # 向指定服务器封禁玩家
 def banFromServer(server_name: str, player_name: str) -> bool:

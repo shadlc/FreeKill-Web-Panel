@@ -4,7 +4,7 @@ from flask_socketio import SocketIO
 
 from src.utils import runCmd, tailLog, queryPerf
 from src.v1 import V1API
-from src.game_server import Controller
+from src.controller import Controller
 from src.connection import Connection
 
 app = Flask(__name__, static_folder='static', static_url_path='/')
