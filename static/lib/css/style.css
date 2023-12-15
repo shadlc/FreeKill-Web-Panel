@@ -691,7 +691,7 @@ footer {
 #server_name_div {
     display: none;
 }
-.player_list, .room_list, .pack_list {
+#player_list, #room_list, #pack_list {
     flex-basis: 100%;
     min-height: 3rem;
     margin: 0.2rem;

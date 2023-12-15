@@ -95,7 +95,7 @@ class Server:
             'temp_ban_time': self.temp_ban_time,
             'hidden_packs': self.hidden_packs,
             'enable_bots': self.enable_bots,
-            'all_packs': self.pack_dict,
+            'pack_list': self.pack_dict,
             'room_list': self.room_dict,
             'player_list': self.player_dict,
         }

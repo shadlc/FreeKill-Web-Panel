@@ -1,8 +1,10 @@
+import os
 import re
 import sys
 import json
 import time
 import base64
+import logging
 import sqlite3
 import requests
 import subprocess
@@ -11,6 +13,12 @@ from flask import jsonify
 from src.connection import Connection
 
 config_file = f'./config.json'
+
+logging.getLogger().name = 'utils'
+if '--debug' in sys.argv[1:]:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
 
 # 从指定图片链接获取base64格式的图片数据并返回
 def getImgBase64FromURL(url: str) -> str:
@@ -27,7 +35,7 @@ def getImgBase64FromURL(url: str) -> str:
 # 取得FreeKill最新版本
 def getFKVersion() -> str | None:
     try:
-        url = 'https://github.com/notify-ctrl/FreeKill/releases/latest'
+        url = 'https://github.com/Qsgs-Fans/FreeKill/releases/latest'
         response = requests.get(url)
         if response.status_code == 200:
             version = response.url.split('/').pop()
@@ -52,15 +60,15 @@ def getVersionFromPath(path: str) -> str:
     return ''
 
 # 运行Bash指令并获取结果
-def runCmd(cmd: str) -> str | None:
+def runCmd(cmd: str, log=True) -> str | None:
     stime = time.time()
     try:
         result = subprocess.check_output(cmd, shell=True).decode('utf-8').strip()
     except:
         return None
     etime = time.time()
-    if '--debug' in sys.argv[1:]:
-        print(f' >>> 耗时({"{:.3f}".format(etime - stime)})执行指令 {cmd}')
+    if log:
+        logging.debug(f' >>> 耗时({"{:.3f}".format(etime - stime)})执行指令 {cmd}')
     return result
 
 # 从指定PID进程获取其运行时长
@@ -72,7 +80,7 @@ def getProcessRuntime(pid: int) -> str:
 
 # 获取正在运行的FreeKill服务器列表以及其信息
 def getServerList() -> list[str]:
-    command = ''' tmux ls -F "#{session_name} #{pane_pid}" '''
+    command = ''' tmux ls -F "#{session_name} #{pane_pid}" 2>/dev/null '''
     name_p_pid = runCmd(command)
     name_p_pid = name_p_pid if name_p_pid else ''
     name_p_pid_list = [i.split(' ') for i in [j for j in name_p_pid.split('\n')]]
@@ -161,8 +169,7 @@ def restful(code: int, msg: str = '', data: dict = {}) -> None:
 # 启动服务器,返回PID
 def startGameServer(name: str, port: int, path: str) -> int:
     command = f''' cd {path};tmux new -d -s "FreeKill-{name}" "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
-    if '--debug' in sys.argv[1:]:
-        print(f' >>> 独立进程   执行指令 {command}')
+    logging.debug(f' >>> 独立进程   执行指令 {command}')
     subprocess.Popen([command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).wait()
     command = ''' ps -ef | grep -vE '(tee|grep)' | grep './FreeKill -s ''' + str(port) + '''' | awk '{print $2}' '''
     result = ''
@@ -218,12 +225,11 @@ def updateGameServer(server_name: str) -> str:
         && ([ -f FreeKill ] || ln -s build/FreeKill)
     '''
     if '--debug' in sys.argv[1:]:
-        print(f' >>> 独立进程   执行指令' + update_cmd.replace('\n', '').replace('    ',''))
+        logging.debug(f' >>> 独立进程   执行指令' + update_cmd.replace('\n', '').replace('    ',''))
     process = subprocess.Popen(update_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, universal_newlines=True)
     while True:
         output = process.stdout.readline()
         if output:
-            print(output)
             yield f'event: message\ndata: {output}\n\n'
         elif process.poll() is not None:
             if process.poll() == 0:
@@ -302,13 +308,32 @@ def getRoomList(name: str) -> dict:
     return room_dict
 
 # 获取指定服务器扩充包
-def getPackList(path: str,) -> dict:
-    conn = sqlite3.connect(f'{path}/packages/packages.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM packages')
-    pack_list: list[tuple] = cursor.fetchall()
-    pack_dict = {pack[0]: pack[1:] for pack in pack_list}
-    return pack_dict
+def getPackList(path: str) -> dict:
+    pack_dict = {}
+    pack_dir_dict = getPackListFromDir(os.path.join(path, 'packages'))
+    try:
+        db_file = os.path.join(path, 'packages/packages.db')
+        logging.debug(f'读取数据库 {db_file}')
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM packages')
+        pack_list: list[tuple] = cursor.fetchall()
+        db_pack_dict = {pack[0]: pack[1:] for pack in pack_list}
+        for name in db_pack_dict:
+            pack_dict[name] = {
+                "name": name,
+                "url": db_pack_dict[name][0],
+                "hash": db_pack_dict[name][1],
+                "enabled": db_pack_dict[name][2],
+            }
+            if name in pack_dir_dict:
+                temp_name = pack_dir_dict[name].get("name")
+                if temp_name:
+                    pack_dict[name]["name"] = pack_dir_dict[name].get("name")
+        return pack_dict
+    except Exception as e:
+        logging.error(f"读取扩充包数据库发生错误：{e}")
+        return {}
 
 # 向指定服务器封禁玩家
 def banFromServer(server_name: str, player_name: str) -> bool:
@@ -411,11 +436,63 @@ def queryPerf(conn: Connection, sid: str) -> None:
         conn.socketio.emit('perf', {'data': {'cpu': '获取异常', 'ram': '获取异常'}})
     ...
 
+# 根据PID返回进程占用的CPU与内存使用量
 def getPerfByPid(pid: int) -> list:
     command = ''' ps -up ''' + str(pid) + ''' --no-header 2>/dev/null | awk '{print $3"% "$6}' '''
-    result = runCmd(command)
+    result = runCmd(command, log=False)
     perf = result if result else ''
     perf_list = perf.split(' ')
     if len(perf_list) < 2:
         return '0.0%', '0MB'
     return perf_list
+
+# 寻找所有指定目录下的新月杀扩展包
+def getPackListFromDir(directory: str) -> dict:
+    pack_dict = {}
+    pack_dirs = [f.path for f in os.scandir(directory) if f.is_dir()]
+    for pack_dir in pack_dirs:
+        init_file = os.path.join(pack_dir, 'init.lua')
+        zh_cn_file = os.path.join(pack_dir, 'i18n/zh_CN.lua')
+        pack_name = os.path.basename(pack_dir)
+        pack_dict[pack_name] = {}
+        if os.path.exists(init_file):
+            with open(init_file) as f:
+                logging.debug(f'读取文件 {init_file}')
+                for line in f:
+                    if 'local extension = Package' in line:
+                        match = re.search(r'Package(:new)?\("([^"]*)', line).groups()[1]
+                        if match != None:
+                            pack_name = match
+                            pack_dict[pack_name] = {}
+                        break
+                content = f.read()
+                if pack_name != None and 'Fk:loadTranslationTable' in content:
+                    trans_dict = getTranslationTable(content)
+                    if pack_name in trans_dict:
+                        pack_dict[pack_name]["name"] = trans_dict[pack_name]
+
+        if 'name' not in pack_dict[pack_name] and os.path.exists(zh_cn_file):
+            logging.debug(f'读取文件 {zh_cn_file}')
+            with open(zh_cn_file) as f:
+                trans_dict = getTranslationTable(f.read())
+                if pack_name in trans_dict:
+                    pack_dict[pack_name]["name"] = trans_dict[pack_name]
+        elif 'name' not in pack_dict[pack_name]:
+            trans_dict = getTranslationTable()
+            if pack_name in trans_dict:
+                pack_dict[pack_name]["name"] = trans_dict[pack_name]
+    return pack_dict
+
+# 读取Lua文件内所有新月杀的翻译表
+def getTranslationTable(content='') -> dict:
+    # 私藏翻译库
+    trans_dict = {
+        "mobile_effect": "手杀特效",
+        "utility": "常用函数",
+    }
+    table_list = re.findall(r'Fk:loadTranslationTable\(?{([\S\s]+)}\)?', content)
+    for table in table_list:
+        matches = re.findall(r'\["(.+)"\][^"]*"(.+)"', table)
+        for key, value in matches:
+            trans_dict[key] = value
+    return trans_dict

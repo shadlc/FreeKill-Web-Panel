@@ -72,6 +72,9 @@ function refreshDetails() {
     document.getElementById('server_pid').innerHTML = info.pid;
     document.getElementById('server_enable_bots').innerHTML = info.enable_bots?'启用':'禁用';
     document.getElementById('server_temp_ban_time').innerHTML = info.temp_ban_time + '分钟';
+    refreshPlayerList(info.player_list);
+    refreshRoomList(info.room_list);
+    refreshPackList(info.pack_list);
     if(info.runtime != 0) {
       start_time = Date.now() - timeToTimeStamp(info.runtime) * 1000;
     } else {
@@ -90,6 +93,39 @@ function refreshTime() {
     let string_time = formatTime(running_time);
     document.getElementById('server_time').innerHTML = string_time;
   }
+}
+
+// 刷新玩家列表
+async function refreshPlayerList(player_list) {
+  for(let index in player_list) {
+    let name = player_list[index]
+    let div = `
+    <div class="capsule-box" title="`+name+`">
+        <i class="bi">&#xF4DA;</i>
+        <span>`+'['+index+'] '+name+`</span>
+    </div>
+    `
+    document.getElementById('player_list').insertAdjacentHTML('BeforeEnd', div);
+  }
+}
+
+// 刷新房间列表
+async function refreshRoomList(room_list) {
+  for(let index in room_list) {
+    let name = room_list[index]
+    let div = `
+    <div class="capsule-box" title="`+name+`">
+        <i class="bi">&#xF422;</i>
+        <span>`+'['+index+'] '+name+`</span>
+    </div>
+    `
+    document.getElementById('room_list').insertAdjacentHTML('BeforeEnd', div);
+  }
+}
+
+// 刷新扩充包列表
+async function refreshPackList() {
+
 }
 
 // 实时监控终端
@@ -143,7 +179,7 @@ socket.on('connect_error', function() {
 // 监控命令输入框的按键，并实现指令历史记录
 let terminal_input = document.querySelector('.terminal-input input');
 const history = localStorage.getItem('cmd_history') ? JSON.parse(localStorage.getItem('cmd_history')) : [];
-let currentIndex = 0;
+let currentIndex = history.length;
 terminal_input.addEventListener('keydown', function(e) {
   if (e.key === 'ArrowUp') {
     e.preventDefault();
@@ -160,7 +196,7 @@ terminal_input.addEventListener('keydown', function(e) {
   } else if (e.key === 'Enter') {
     const currentValue = terminal_input.value.trim();
     if (currentValue !== '') {
-      if(history.length >= 50) {
+      if(history.length >= 100) {
         history.shift();
       }
       history.push(currentValue);
