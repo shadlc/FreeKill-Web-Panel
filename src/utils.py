@@ -309,8 +309,7 @@ def getRoomList(name: str) -> dict:
 
 # 获取指定服务器扩充包
 def getPackList(path: str) -> dict:
-    pack_dict = {}
-    pack_dir_dict = getPackListFromDir(os.path.join(path, 'packages'))
+    pack_dict = getPackListFromDir(os.path.join(path, 'packages'))
     try:
         db_file = os.path.join(path, 'packages/packages.db')
         logging.debug(f'读取数据库 {db_file}')
@@ -320,20 +319,20 @@ def getPackList(path: str) -> dict:
         pack_list: list[tuple] = cursor.fetchall()
         db_pack_dict = {pack[0]: pack[1:] for pack in pack_list}
         for name in db_pack_dict:
-            pack_dict[name] = {
-                "name": name,
-                "url": db_pack_dict[name][0],
-                "hash": db_pack_dict[name][1],
-                "enabled": db_pack_dict[name][2],
+            package = {
+                'url': db_pack_dict[name][0],
+                'hash': db_pack_dict[name][1],
+                'enabled': db_pack_dict[name][2],
             }
-            if name in pack_dir_dict:
-                temp_name = pack_dir_dict[name].get("name")
-                if temp_name:
-                    pack_dict[name]["name"] = pack_dir_dict[name].get("name")
+            if name in pack_dict:
+                pack_dict[name].update(package)
+            else:
+                pack_dict[name] = package
         return pack_dict
     except Exception as e:
-        logging.error(f"读取扩充包数据库发生错误：{e}")
-        return {}
+        raise e
+        logging.error(f'读取扩充包数据库发生错误：{e}')
+        return pack_dict
 
 # 向指定服务器封禁玩家
 def banFromServer(server_name: str, player_name: str) -> bool:
@@ -392,7 +391,7 @@ def tailLog(conn: Connection, sid: str) -> None:
             path = temp_path
 
         log_file = f'{path}/fk-latest.log'
-        conn.socketio.emit('terminal', {'text': tailLogNum(log_file, 500), 'history': True})
+        conn.socketio.emit('terminal', {'text': tailLogNum(log_file, 1000), 'history': True})
         with open(log_file) as f:
             f.seek(0, 2)
             while conn.contains(sid):
@@ -448,51 +447,77 @@ def getPerfByPid(pid: int) -> list:
 
 # 寻找所有指定目录下的新月杀扩展包
 def getPackListFromDir(directory: str) -> dict:
+    package_dict = {'vanilla':{'name': '新月杀', 'packs': {}}}
+    root_path, pack_dir = os.path.split(directory.rstrip('/'))
+    pack_path_list = [f.path for f in os.scandir(directory) if f.is_dir()]
+    for pack_path in pack_path_list:
+        pack_name = os.path.basename(pack_path)
+        init_file = os.path.join(pack_dir, pack_name, 'init.lua')
+        extension_name, pack_dict, trans_dict = extractExtension(root_path, init_file)
+        package = {
+            "name": trans_dict.get(extension_name, extension_name),
+            "packs": {}
+        }
+        for pack_name in pack_dict:
+            package['packs'][pack_name] = pack_dict[pack_name]
+            package['packs'][pack_name]['name'] = trans_dict.get(pack_name, pack_name)
+        if len(pack_dict):
+            if extension_name:
+                package_dict[extension_name] = package
+            else:
+                package_dict['vanilla']['packs'].update(package['packs'])
+    return package_dict
+
+# 解析指定目录下的扩展包，返回包名、子包与字典表
+def extractExtension(root_path: str, lua_file: str) -> tuple:
+    extension_name = ''
     pack_dict = {}
-    pack_dirs = [f.path for f in os.scandir(directory) if f.is_dir()]
-    for pack_dir in pack_dirs:
-        init_file = os.path.join(pack_dir, 'init.lua')
-        zh_cn_file = os.path.join(pack_dir, 'i18n/zh_CN.lua')
-        pack_name = os.path.basename(pack_dir)
-        pack_dict[pack_name] = {}
-        if os.path.exists(init_file):
-            with open(init_file) as f:
-                logging.debug(f'读取文件 {init_file}')
-                for line in f:
-                    if 'local extension = Package' in line:
-                        match = re.search(r'Package(:new)?\("([^"]*)', line).groups()[1]
-                        if match != None:
-                            pack_name = match
-                            pack_dict[pack_name] = {}
-                        break
-                content = f.read()
-                if pack_name != None and 'Fk:loadTranslationTable' in content:
-                    trans_dict = getTranslationTable(content)
-                    if pack_name in trans_dict:
-                        pack_dict[pack_name]["name"] = trans_dict[pack_name]
+    trans_dict = {}
+    lua_path = os.path.join(root_path, lua_file)
+    if not os.path.exists(lua_path):
+        return '', [], {}
+    lua_code = open(lua_path, encoding='utf-8').read()
+    lua_code = '\n'.join([line for line in lua_code.split('\n') if '--' not in line])
 
-        if 'name' not in pack_dict[pack_name] and os.path.exists(zh_cn_file):
-            logging.debug(f'读取文件 {zh_cn_file}')
-            with open(zh_cn_file) as f:
-                trans_dict = getTranslationTable(f.read())
-                if pack_name in trans_dict:
-                    pack_dict[pack_name]["name"] = trans_dict[pack_name]
-        elif 'name' not in pack_dict[pack_name]:
-            trans_dict = getTranslationTable()
-            if pack_name in trans_dict:
-                pack_dict[pack_name]["name"] = trans_dict[pack_name]
-    return pack_dict
+    if result := re.search(r'extension.extensionName[^"]*"([^"]*)', lua_code):
+        extension_name = result.groups()[0]
 
-# 读取Lua文件内所有新月杀的翻译表
-def getTranslationTable(content='') -> dict:
-    # 私藏翻译库
-    trans_dict = {
-        "mobile_effect": "手杀特效",
-        "utility": "常用函数",
-    }
-    table_list = re.findall(r'Fk:loadTranslationTable\(?{([\S\s]+)}\)?', content)
-    for table in table_list:
-        matches = re.findall(r'\["(.+)"\][^"]*"(.+)"', table)
-        for key, value in matches:
-            trans_dict[key] = value
-    return trans_dict
+    package_list = re.findall(r'Package(:new)?\("([^"]*)"[, ]*(Package\.[^\)\s]*|[^\)\s]*)', lua_code)
+    print(package_list)
+    for _, package, pack_type in package_list:
+        if pack_type == 'Package.CardPack':
+            pack_type = 'card'
+        elif pack_type:
+            continue
+        else:
+            pack_type = 'role'
+        pack_dict[package] = {
+            'name': '',
+            'type': pack_type,
+        }
+    mode_package_list = re.findall(r'fk.CreateGameMode\(?{[\S\s]*name[^"]*"([^"]*)[\S\s]*}\)?', lua_code)
+    for package in mode_package_list:
+        pack_dict[package] = {
+            'name': '',
+            'type': 'mode',
+        }
+
+    if 'i18n' not in lua_file or 'zh_CN' in lua_file:
+        trans_table_list = re.findall(r'Fk:loadTranslationTable\(?{([\S\s]+)}\)?', lua_code)
+        for table in trans_table_list:
+            matches = re.findall(r'\["(.+)"\][^"]*"(.+)"', table)
+            trans_dict.update({key: value for key, value in matches})
+
+    require_list = re.findall(r'require[^"]*"(.+)"', lua_code)
+    dofile_list = re.findall(r'dofile[^"]*"(.+)"', lua_code)
+    for extra_file in (require_list + dofile_list):
+        extra_file = extra_file.replace('.','/')
+        if '/lua' in extra_file:
+            extra_file = extra_file.replace('/lua','.lua')
+        else:
+            extra_file += '.lua'
+        e_name, packs, trans = extractExtension(root_path, extra_file)
+        if e_name: extension_name = e_name
+        if trans: trans_dict.update(trans)
+        if packs: pack_dict.update(packs)
+    return extension_name, pack_dict, trans_dict

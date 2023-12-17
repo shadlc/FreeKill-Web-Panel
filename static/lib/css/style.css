@@ -358,6 +358,7 @@ footer {
     position: absolute;
     display: none;
     font-size: 1.4rem;
+    margin-top: 0.5rem;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -693,11 +694,35 @@ footer {
 }
 #player_list, #room_list, #pack_list {
     flex-basis: 100%;
-    min-height: 3rem;
+    min-height: 2rem;
     margin: 0.2rem;
     padding: 0.2rem;
+    padding-top: 1.2rem;
     border: 2px solid;
     border-radius: 0.5rem;
+}
+
+#player_list>*,
+#room_list>*,
+#pack_list>* {
+    margin: 0.2rem;
+}
+
+#player_list::before,
+#room_list::before,
+#pack_list::before {
+    position: absolute;
+    top: 0;
+    font-weight: bold;
+}
+#player_list::before {
+    content: "玩家列表";
+}
+#room_list::before {
+    content: "房间列表";
+}
+#pack_list::before {
+    content: "扩充包列表";
 }
 
 @media (max-width: 800px) {
