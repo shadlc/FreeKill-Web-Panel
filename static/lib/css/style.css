@@ -410,16 +410,20 @@ footer {
     border-radius: 0.5rem;
 }
 .capsule-box>* {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0 0.2rem;
-    border-left: 2px solid;
     text-align: center;
     word-wrap: anywhere;
 }
-.capsule-box>*:first-child {
-    border-left: none;
+.capsule-box>*:nth-child(2n) {
+    border-left: 2px solid;
+    border-right: 2px solid;
+}
+.capsule-box>*:last-child {
+    border-right: none;
 }
 
 .server-item {
@@ -700,12 +704,20 @@ footer {
     padding-top: 1.2rem;
     border: 2px solid;
     border-radius: 0.5rem;
+    overflow: hidden;
 }
 
 #player_list>*,
 #room_list>*,
 #pack_list>* {
     margin: 0.2rem;
+}
+#pack_list>* {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #player_list::before,

@@ -328,9 +328,9 @@ def getPackList(path: str) -> dict:
                 pack_dict[name].update(package)
             else:
                 pack_dict[name] = package
+                pack_dict[name]['name'] = name
         return pack_dict
     except Exception as e:
-        raise e
         logging.error(f'读取扩充包数据库发生错误：{e}')
         return pack_dict
 
@@ -483,7 +483,6 @@ def extractExtension(root_path: str, lua_file: str) -> tuple:
         extension_name = result.groups()[0]
 
     package_list = re.findall(r'Package(:new)?\("([^"]*)"[, ]*(Package\.[^\)\s]*|[^\)\s]*)', lua_code)
-    print(package_list)
     for _, package, pack_type in package_list:
         if pack_type == 'Package.CardPack':
             pack_type = 'card'

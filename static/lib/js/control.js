@@ -124,8 +124,29 @@ async function refreshRoomList(room_list) {
 }
 
 // 刷新扩充包列表
-async function refreshPackList() {
-
+async function refreshPackList(pack_list) {
+  for(let code in pack_list) {
+    let name = pack_list[code].name
+    let url = pack_list[code].url
+    let hash = pack_list[code].hash
+    let style = ''
+    if(pack_list[code].enabled === 0) {
+      style = ' style="opacity:0.6;"'
+    }
+    let div = `
+    <div class="capsule-box"`+style+`>
+        <i class="bi">&#xF7D3;</i>
+        <span title="`+name+`">`+name+`</span>
+        <i class="bi">&#xF2C6;</i>
+        <span title="`+code+`">`+code+`</span>
+        <i class="bi">&#xF69D;</i>
+        <span title="`+url+`">`+url+`</span>
+        <i class="bi">&#xF40A;</i>
+        <span title="`+hash+`">`+hash+`</span>
+    </div>
+    `
+    document.getElementById('pack_list').insertAdjacentHTML('BeforeEnd', div);
+  }
 }
 
 // 实时监控终端
