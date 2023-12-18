@@ -218,10 +218,12 @@ export function timeToTimeStamp(time) {
 
 // 转换BASH颜色为HTML实体
 export function convertBashColor(text) {
+  let color_matched = 0;
   text = text.replace(/\[([0-9]{1,2}(;[0-9]{1,2})?)?m/g, (match, patten) => {
     let classes = '';
     if (patten) {
       if(patten == '0;0') {
+        color_matched -= 1;
         return '</span>';
       }
       let codes = patten.split(';');
@@ -249,8 +251,12 @@ export function convertBashColor(text) {
             classes += ' '; // add space between classes
         }
       }
+      color_matched += 1;
       return '<span class="' + classes.trim() + '">';
   });
+  if(color_matched > 0) {
+    text += '</span>';
+  }
   return text;
 }
 
