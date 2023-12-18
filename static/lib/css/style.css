@@ -39,6 +39,15 @@ i.bi {
     font-size: 1rem;
     line-height: 1.3rem;
 }
+badge {
+    font-size: small;
+    color: field;
+    background-color: fieldtext;
+    vertical-align: text-top;
+    padding: 0 0.2rem;
+    margin: 0 0.2rem;
+    border-radius: 0.4rem;
+}
 footer {
     position: absolute;
     bottom: 0.5rem;
@@ -408,6 +417,7 @@ footer {
     width: fit-content;
     border: 2px solid;
     border-radius: 0.5rem;
+    margin: 0.2rem;
 }
 .capsule-box>* {
     position: relative;
@@ -418,12 +428,18 @@ footer {
     text-align: center;
     word-wrap: anywhere;
 }
-.capsule-box>*:nth-child(2n) {
+.capsule-box>span {
     border-left: 2px solid;
     border-right: 2px solid;
 }
-.capsule-box>*:last-child {
+.capsule-box>span:last-child {
     border-right: none;
+}
+.capsule-box>div {
+    border-bottom: 2px solid;
+}
+.capsule-box>div:last-child {
+    border-bottom: none;
 }
 
 .server-item {
@@ -624,9 +640,6 @@ footer {
     overflow: hidden;
     overflow-y: auto;
 }
-.server-detail>* {
-    margin: 0.2rem 0.2rem;
-}
 .server-detail>*:nth-child(-n+4) {
     flex-grow: 1;
     flex-basis: 100%;
@@ -647,7 +660,7 @@ footer {
     width: 4rem;
 }
 .server-detail>*>*:nth-child(3n-1) {
-    border-left: none;
+    border: none;
     min-width: 2rem;
 }
 .server-control {
@@ -671,11 +684,10 @@ footer {
     flex-basis: 100%;
 }
 .server-perf>* {
-    margin: 0.2rem 0.2rem;
     flex-grow: 1;
 }
 .server-perf>*>*:nth-child(2) {
-    border-left: none;
+    border: none;
     min-width: 2rem;
 }
 .server-perf>*>*:nth-child(3) {
@@ -706,18 +718,14 @@ footer {
     border-radius: 0.5rem;
     overflow: hidden;
 }
-
-#player_list>*,
-#room_list>*,
 #pack_list>* {
-    margin: 0.2rem;
-}
-#pack_list>* {
-    flex-grow: 1;
-    flex-shrink: 1;
     flex-basis: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+}
+#pack_list>*>* {
+    text-align: start;
+}
+#pack_list summary span {
+    vertical-align: top;
 }
 
 #player_list::before,

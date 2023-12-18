@@ -310,6 +310,10 @@ def getRoomList(name: str) -> dict:
 # 获取指定服务器扩充包
 def getPackList(path: str) -> dict:
     pack_dict = getPackListFromDir(os.path.join(path, 'packages'))
+    trans_dict = {
+        'mobile_effect': '手杀特效',
+        'utility': '常用函数',
+    }
     try:
         db_file = os.path.join(path, 'packages/packages.db')
         logging.debug(f'读取数据库 {db_file}')
@@ -328,7 +332,7 @@ def getPackList(path: str) -> dict:
                 pack_dict[name].update(package)
             else:
                 pack_dict[name] = package
-                pack_dict[name]['name'] = name
+                pack_dict[name]['name'] = trans_dict.get(name, name)
         return pack_dict
     except Exception as e:
         logging.error(f'读取扩充包数据库发生错误：{e}')

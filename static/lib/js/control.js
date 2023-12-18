@@ -126,25 +126,73 @@ async function refreshRoomList(room_list) {
 // 刷新扩充包列表
 async function refreshPackList(pack_list) {
   for(let code in pack_list) {
-    let name = pack_list[code].name
-    let url = pack_list[code].url
-    let hash = pack_list[code].hash
-    let style = ''
+    let name = pack_list[code].name;
+    let url = pack_list[code].url;
+    let hash = pack_list[code].hash;
+    let pack_count = 0;
+    if(pack_list[code]?.packs) {
+      pack_count = Object.keys(pack_list[code].packs).length;
+    }
+    let badge = '';
+    let style = '';
+    let info_style = '';
+    if(pack_count) {
+      badge += '<badge>'+pack_count+'子包</badge>'
+    } else {
+      badge += '<badge>无子包</badge>'
+    }
     if(pack_list[code].enabled === 0) {
       style = ' style="opacity:0.6;"'
+      badge += '<badge>未启用</badge>'
     }
+    if(!url) {
+      badge += '<badge>内置包</badge>'
+      info_style = ' style="display:none;"'
+    }
+
+    let packs = ''
+    for(let pack in pack_list[code].packs) {
+      let pack_info = pack_list[code].packs[pack]
+      let pack_type = '角色包'
+      if(pack_info.type == 'card') {
+        pack_type = '卡牌包'
+      } else if(pack_info.type == 'mode') {
+        pack_type = '模式包'
+      }
+      packs += `
+      <div class="capsule-box">
+        <i class="bi" title="子包名称">&#xF5AF;</i>
+        <span title="`+pack_info.name+`">`+pack_info.name+`</span>
+        <i class="bi" title="子包代码">&#xF351;</i>
+        <span title="`+pack+`">`+pack+`</span>
+        <i class="bi" title="子包类型">&#xF2C9;</i>
+        <span title="`+pack_type+`">`+pack_type+`</span>
+      </div>
+      `
+    }
+
     let div = `
     <div class="capsule-box"`+style+`>
-        <i class="bi">&#xF7D3;</i>
-        <span title="`+name+`">`+name+`</span>
-        <i class="bi">&#xF2C6;</i>
-        <span title="`+code+`">`+code+`</span>
-        <i class="bi">&#xF69D;</i>
-        <span title="`+url+`">`+url+`</span>
-        <i class="bi">&#xF40A;</i>
-        <span title="`+hash+`">`+hash+`</span>
+        <details>
+          <summary>
+            <i class="bi" title="扩展包名">&#xF7D3;</i>
+            <span title="`+name+`">`+name+' ('+code+')'+`</span>
+            `+badge+`
+          </summary>
+          <div `+info_style+`>
+            <i class="bi" title="更新地址">&#xF69D;</i>
+            <span title="更新地址">地址</span>
+            <span title="`+url+`">`+url+`</span>
+          </div>
+          <div `+info_style+`>
+            <i class="bi" title="版本">&#xF40A;</i>
+            <span title="版本">版本</span>
+            <span title="`+hash+`">`+hash+`</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;">`+packs+`</div>
+        </details>
     </div>
-    `
+    `;
     document.getElementById('pack_list').insertAdjacentHTML('BeforeEnd', div);
   }
 }
