@@ -97,6 +97,8 @@ function refreshTime() {
 
 // 刷新玩家列表
 async function refreshPlayerList(player_list) {
+  let list_div = document.getElementById('player_list');
+  list_div.innerHTML = '';
   for(let index in player_list) {
     let name = player_list[index]
     let div = `
@@ -105,12 +107,14 @@ async function refreshPlayerList(player_list) {
         <span>`+'['+index+'] '+name+`</span>
     </div>
     `
-    document.getElementById('player_list').insertAdjacentHTML('BeforeEnd', div);
+    list_div.insertAdjacentHTML('BeforeEnd', div);
   }
 }
 
 // 刷新房间列表
 async function refreshRoomList(room_list) {
+  let list_div = document.getElementById('room_list');
+  list_div.innerHTML = '';
   for(let index in room_list) {
     let name = room_list[index]
     let div = `
@@ -119,12 +123,14 @@ async function refreshRoomList(room_list) {
         <span>`+'['+index+'] '+name+`</span>
     </div>
     `
-    document.getElementById('room_list').insertAdjacentHTML('BeforeEnd', div);
+    list_div.insertAdjacentHTML('BeforeEnd', div);
   }
 }
 
 // 刷新扩充包列表
 async function refreshPackList(pack_list) {
+  let list_div = document.getElementById('pack_list');
+  list_div.innerHTML = '';
   for(let code in pack_list) {
     let name = pack_list[code].name;
     let url = pack_list[code].url;
@@ -193,7 +199,7 @@ async function refreshPackList(pack_list) {
         </details>
     </div>
     `;
-    document.getElementById('pack_list').insertAdjacentHTML('BeforeEnd', div);
+    list_div.insertAdjacentHTML('BeforeEnd', div);
   }
 }
 

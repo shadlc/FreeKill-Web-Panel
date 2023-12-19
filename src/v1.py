@@ -21,8 +21,8 @@ class V1API(FlaskView):
     @route('servers', methods=['GET'])
     def servers(self):
         server_dict_list = []
-        list = self.controller.getList()
-        for server in list:
+        server_list = self.controller.getList()
+        for server in server_list:
             server_dict_list.append(server.info())
         return restful(200, '', {'list': server_dict_list})
 
@@ -41,8 +41,8 @@ class V1API(FlaskView):
         cmd = request.json.get('cmd', '')
         for char in ['`', '"', '$', '\x01']:
             cmd = cmd.replace(char, f'\\{char}')
-        list = self.controller.getList()
-        for server in list:
+        server_list = self.controller.getList()
+        for server in server_list:
             if server.name == name:
                 is_port_busy = isPortBusy(server.port)
                 if cmd == 'start' and not is_port_busy:
@@ -73,14 +73,14 @@ class V1API(FlaskView):
         motd = request.json.get('motd', '')
         enable_bots = bool(request.json.get('enable_bots', True))
         
-        list = self.controller.getList()
+        server_list = self.controller.getList()
         if not name:
             return restful(405, f'服务器名称不能为空')
         elif not port:
             return restful(405, f'服务器端口无效')
         elif not path:
             return restful(405, f'服务器启动路径不能为空')
-        elif name in [server.name for server in list]:
+        elif name in [server.name for server in server_list]:
             return restful(409, f'该服务器名称重名：{name}')
         elif match := re.search(r'([<>:;"/\\\|\?\*\x00-\x1F\x7F\'\`\s])', name):
             result = match.groups()[0]
@@ -94,7 +94,7 @@ class V1API(FlaskView):
         elif match := re.search(r'([<>:;"\\|\?\*\x00-\x1F\x7F\'\`\s])', path):
             result = match.groups()[0]
             return restful(409, f'该服务器路径存在不可用字符：<{result}>')
-        elif path in [server.path for server in list]:
+        elif path in [server.path for server in server_list]:
             return restful(409, f'该路径已经启动了一个服务器')
 
         if e := writeGameConfig(path, {
@@ -117,8 +117,8 @@ class V1API(FlaskView):
     @route('start_server', methods=['GET'])
     def restart_server(self):
         server_name = request.args.get('name', '')
-        list = self.controller.getList()
-        for server in list:
+        server_list = self.controller.getList()
+        for server in server_list:
             if server.name == server_name:
                 if isPortBusy(server.port):
                     return restful(405, '服务器已经在运行中')
@@ -131,13 +131,13 @@ class V1API(FlaskView):
                 self.controller.connection.set(server.name, 'pid', server.pid)
                 return restful(200, '服务器启动成功')
 
-        return restful(400, '服务器启动失败，该端口可能已被占用')
+        return restful(404, '无法找到该服务器')
 
     @route('stop_server', methods=['GET'])
     def stop_server(self):
         server_name = request.args.get('name', '')
-        list = self.controller.getList()
-        for server in list:
+        server_list = self.controller.getList()
+        for server in server_list:
             if not isPortBusy(server.port):
                 return restful(405, '服务器已经是停止状态')
             if server.name == server_name and stopGameServer(server.name):
@@ -176,8 +176,8 @@ class V1API(FlaskView):
     def config(self):
         if request.method == 'GET':
             server_name = request.args.get('name', '')
-            list = self.controller.getList()
-            for server in list:
+            server_list = self.controller.getList()
+            for server in server_list:
                 if server.name == server_name:
                     result, config = readGameConfig(server.path)
                     if result:
@@ -189,8 +189,8 @@ class V1API(FlaskView):
             server_name = request.json.get('name', '')
             config_text = request.json.get('config', '')
             config = json.loads(config_text)
-            list = self.controller.getList()
-            for server in list:
+            server_list = self.controller.getList()
+            for server in server_list:
                 if server.name == server_name:
                     e = writeGameConfig(server.path, config)
                     if e:

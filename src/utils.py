@@ -29,7 +29,8 @@ def getImgBase64FromURL(url: str) -> str:
             base64_data = 'data:image/png;base64,' + base64.b64encode(image_data).decode('utf-8')
             return base64_data
         return ''
-    except:
+    except Exception as e:
+        logging.error(e)
         return ''
 
 # 取得FreeKill最新版本
@@ -41,7 +42,8 @@ def getFKVersion() -> str | None:
             version = response.url.split('/').pop()
             return version
         return
-    except:
+    except Exception as e:
+        logging.error(e)
         return
 
 # 从CMakeList.txt中获取游戏版本
@@ -56,20 +58,25 @@ def getVersionFromPath(path: str) -> str:
         if match:
             version = match.group()
             return f'v{version}'
-    except:...
+    except Exception as e:
+        logging.error(e)
     return ''
 
 # 运行Bash指令并获取结果
 def runCmd(cmd: str, log=True) -> str | None:
-    stime = time.time()
     try:
-        result = subprocess.check_output(cmd, shell=True).decode('utf-8').strip()
-    except:
+        stime = time.time()
+        comm = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
+        stdout, stderr = comm.communicate()
+        etime = time.time()
+        if log:
+            logging.debug(f' >>> 耗时({"{:.3f}".format(etime - stime)})执行指令 {cmd}')
+        if stderr:
+            logging.info(f' >>> 执行上述指令出错：{stderr}')
+        return stdout.strip()
+    except Exception as e:
+        logging.error(f'执行外部指令出错：{e}')
         return None
-    etime = time.time()
-    if log:
-        logging.debug(f' >>> 耗时({"{:.3f}".format(etime - stime)})执行指令 {cmd}')
-    return result
 
 # 从指定PID进程获取其运行时长
 def getProcessRuntime(pid: int) -> str:
@@ -224,8 +231,7 @@ def updateGameServer(server_name: str) -> str:
         && cd .. \
         && ([ -f FreeKill ] || ln -s build/FreeKill)
     '''
-    if '--debug' in sys.argv[1:]:
-        logging.debug(f' >>> 独立进程   执行指令' + update_cmd.replace('\n', '').replace('    ',''))
+    logging.debug(f' >>> 独立进程   执行指令' + update_cmd.replace('\n', '').replace('    ',''))
     process = subprocess.Popen(update_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, universal_newlines=True)
     while True:
         output = process.stdout.readline()
@@ -255,6 +261,7 @@ def writeGameConfig(path: str, config: dict) -> str | None:
                 config_json[key] = config[key]
         json.dump(config_json, open(f'{path}/freekill.server.config.json', 'w'), ensure_ascii=False, indent=2)
     except Exception as e:
+        logging.error(e)
         return e
 
 # 简单的对tmux窗口进行内容捕获
@@ -274,7 +281,10 @@ def runTmuxCmd(tid: str, cmd: str) -> str:
 # 获取指定服务器内在线人数
 def getPlayers(name: str) -> int:
     captured = runTmuxCmd(f'FreeKill-{name}', 'lsplayer')
-    player_text = captured.rsplit('lsplayer\n', 1)[1] if captured else ''
+    if captured and 'lsplayer\n' in captured:
+        player_text = captured.rsplit('lsplayer\n', 1)[1]
+    else:
+        player_text = ''
     if match := re.search(r'Current (.*) online player\(s\)', player_text):
         count = match.groups()[0]
         if count.isdigit():
@@ -284,7 +294,10 @@ def getPlayers(name: str) -> int:
 # 获取指定服务器内在线玩家列表
 def getPlayerList(name: str) -> dict:
     captured = runTmuxCmd(f'FreeKill-{name}', 'lsplayer')
-    player_text = captured.rsplit('lsplayer\n', 1)[1] if captured else ''
+    if captured and 'lsplayer\n' in captured:
+        player_text = captured.rsplit('lsplayer\n', 1)[1]
+    else:
+        player_text = ''
     player_dict = {}
     if re.search(r'Current (.*) online player\(s\)', player_text):
         for line in player_text.split('\n'):
@@ -297,7 +310,10 @@ def getPlayerList(name: str) -> dict:
 # 获取指定服务器内已房间列表
 def getRoomList(name: str) -> dict:
     captured = runTmuxCmd(f'FreeKill-{name}', 'lsroom')
-    room_text = captured.rsplit('lsroom\n', 1)[1] if captured else ''
+    if captured and 'lsroom\n' in captured:
+        room_text = captured.rsplit('lsroom\n', 1)[1]
+    else:
+        room_text = ''
     room_dict = {}
     if match := re.search(r'Current (.*) running rooms are', room_text):
         for line in room_text.split('\n'):
