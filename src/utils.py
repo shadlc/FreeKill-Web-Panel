@@ -539,6 +539,4 @@ def extractExtension(root_path: str, lua_file: str) -> tuple:
         if e_name: extension_name = e_name
         if trans: trans_dict.update(trans)
         if packs: pack_dict.update(packs)
-    if extension_name == 'gamemode':
-        print(trans_dict)
     return extension_name, pack_dict, trans_dict
