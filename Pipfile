@@ -12,6 +12,8 @@ requests = "*"
 chardet = "*"
 gevent = "*"
 gevent-websocket = "*"
+python-screen = "*"
+psutil = "*"
 
 [dev-packages]
 

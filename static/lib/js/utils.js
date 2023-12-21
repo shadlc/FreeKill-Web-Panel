@@ -149,6 +149,9 @@ export function period(now, past, format) {
 
 // 给定时间戳返回格式化日期
 export function formatTime(timestamp) {
+  if(timestamp==0) {
+    return 0;
+  }
   let milliseconds = Math.abs(timestamp);
   let seconds = Math.floor(milliseconds / 1000);
   let minutes = Math.floor(seconds / 60);
@@ -179,12 +182,16 @@ export function formatTime(timestamp) {
 // 对特定格式的时间进行计算
 export function addSecondsToTime(time, add_seconds) {
   let [days, hours, minutes, seconds] = [0, 0, 0, 0]
-  if(time.match(/^\d+:\d+$/g)) {
+  if(time.match(/^\d+秒$/g)) {
+    [seconds] = time.match(/\d+/g).map(Number);
+  } else if(time.match(/^\d+分\d+秒$/g)) {
     [minutes, seconds] = time.match(/\d+/g).map(Number);
-  } else if(time.match(/^\d+:\d+:\d+$/g)) {
+  } else if(time.match(/^\d+时\d+分\d+秒$/g)) {
     [hours, minutes, seconds] = time.match(/\d+/g).map(Number);
-  } else if(time.match(/^\d+-\d+:\d+:\d+$/g)) {
+  } else if(time.match(/^\d+日\d+时\d+分\d+秒$/g)) {
     [days, hours, minutes, seconds] = time.match(/\d+/g).map(Number);
+  } else {
+    return time
   }
 
   const total_seconds = (days*24*60*60) + (hours*60*60) + (minutes*60) + seconds;
@@ -195,22 +202,26 @@ export function addSecondsToTime(time, add_seconds) {
   const updated_seconds = Math.floor(updated_total_seconds % 60).toString().padStart(2, '0');
 
   if(days) {
-    return `${updated_days}-${updated_hours}:${updated_minutes}:${updated_seconds}`;
+    return `${updated_days}日${updated_hours}时${updated_minutes}分${updated_seconds}秒`;
   } else if(hours) {
-    return `${updated_hours}:${updated_minutes}:${updated_seconds}`;
+    return `${updated_hours}时${updated_minutes}分${updated_seconds}秒`;
+  } else if(minutes) {
+    return `${updated_minutes}分${updated_seconds}秒`;
   } else {
-    return `${updated_minutes}:${updated_seconds}`;
+    return `${updated_seconds}秒`;
   }
 }
 
 // 对特定格式的时间计算得到时间戳
 export function timeToTimeStamp(time) {
   let [days, hours, minutes, seconds] = [0, 0, 0, 0]
-  if(time.match(/^\d+:\d+$/g)) {
+  if(time.match(/^\d+秒$/g)) {
+    [seconds] = time.match(/\d+/g).map(Number);
+  } else if(time.match(/^\d+分\d+秒$/g)) {
     [minutes, seconds] = time.match(/\d+/g).map(Number);
-  } else if(time.match(/^\d+:\d+:\d+$/g)) {
+  } else if(time.match(/^\d+时\d+分\d+秒$/g)) {
     [hours, minutes, seconds] = time.match(/\d+/g).map(Number);
-  } else if(time.match(/^\d+-\d+:\d+:\d+$/g)) {
+  } else if(time.match(/^\d+日\d+时\d+分\d+秒$/g)) {
     [days, hours, minutes, seconds] = time.match(/\d+/g).map(Number);
   }
   return (days*24*60*60) + (hours*60*60) + (minutes*60) + seconds;

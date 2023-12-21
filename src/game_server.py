@@ -1,7 +1,7 @@
 import json
 import time
 
-from src.utils import getProcessRuntime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, startGameServer, getServerList, getPlayerList, getRoomList, getPackList
+from src.utils import getProcessUptime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, startGameServer, getServerList, getPlayerList, getRoomList, getPackList
 
 
 class Server:
@@ -41,7 +41,7 @@ class Server:
         if not self.readConfig():
             return
         try:
-            if not self.pid or getProcessRuntime(self.pid) == '0':
+            if not self.pid or getProcessUptime(self.pid) == '0':
                 self.status = '未运行'
             self.version = getVersionFromPath(self.path)
         except:
@@ -54,7 +54,7 @@ class Server:
         return '服务器启动失败，该端口可能已被占用'
 
     def info(self) -> dict:
-        runtime = '0'
+        uptime = '0'
         if not isPortBusy(self.port):
             self.status = '已停止'
         else:
@@ -65,7 +65,7 @@ class Server:
                 server_pid = int(server_info[1]) if len(server_info) >=2 else self.pid
                 if self.name == server_name:
                     self.pid = server_pid
-                    runtime = getProcessRuntime(self.pid)
+                    uptime = getProcessUptime(self.pid)
                     break
             self.readPlayers()
 
@@ -78,7 +78,7 @@ class Server:
             'players': self.players,
             'status': self.status,
             'version': getVersionFromPath(self.path),
-            'runtime': runtime,
+            'uptime': uptime,
             'pid': self.pid,
         }
 

@@ -1,4 +1,4 @@
-import { changeScheme, showDialog, addSecondsToTime } from './utils.js'
+import { changeScheme, showDialog, addSecondsToTime, formatTime } from './utils.js'
 import { getServerList, startServer, stopServer, deleteServer } from './net.js'
 
 // 主题相关
@@ -70,7 +70,7 @@ function render_server_list(servers){
                 <i class="bi server-version">&#xF69D;</i>
                 <span class="server-version">`+info.version+`</span>
                 <i class="bi server-time">&#xF293;</i>
-                <span class="server-time">`+info.runtime+`</span>
+                <span class="server-time">`+formatTime(info.uptime*1000)+`</span>
             </div>
         </div>
         <div class="server-toggle">

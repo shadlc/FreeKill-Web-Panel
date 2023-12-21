@@ -6,8 +6,10 @@ import time
 import base64
 import logging
 import sqlite3
+import psutil
 import requests
 import subprocess
+import pyscreen
 
 from flask import jsonify
 from src.connection import Connection
@@ -79,11 +81,14 @@ def runCmd(cmd: str, log=True) -> str | None:
         return None
 
 # 从指定PID进程获取其运行时长
-def getProcessRuntime(pid: int) -> str:
-    command = f' ps -p {pid} -o etime='
-    runtime = runCmd(command)
-    runtime = runtime if runtime else '0'
-    return runtime
+def getProcessUptime(pid: int) -> str:
+    uptime = 0
+    try:
+        process = psutil.Process(pid)
+        uptime = process.create_time()
+        uptime = psutil.time.time() - uptime
+    except psutil.NoSuchProcess:...
+    return uptime
 
 # 获取正在运行的FreeKill服务器列表以及其信息
 def getServerList() -> list[str]:
@@ -108,35 +113,34 @@ def getServerList() -> list[str]:
         name = item[0].replace('FreeKill-', '')
         p_pid = item[1]
         if p_pid in pid_port_dict:
-            pid = pid_port_dict[p_pid][0]
-            port = pid_port_dict[p_pid][1]
+            pid = int(pid_port_dict[p_pid][0])
+            port = int(pid_port_dict[p_pid][1])
             server_list.append([name, pid, port])
     return server_list
 
 # 通过PID获取程序的执行路径
 def getProcPathByPid(pid: int) -> str:
-    command = f' readlink /proc/{pid}/exe 2>/dev/null'
-    result = runCmd(command)
-    path = result if result else ''
-    path = path.rsplit('/', 1)[0].rstrip('build').rstrip('/')
-    return path
+    try:
+        process = psutil.Process(pid)
+        path = process.exe()
+        if '/build/FreeKill' in path:
+            path = path.rsplit('/', 1)[0].rstrip('build').rstrip('/')
+        return path
+    except psutil.NoSuchProcess:
+        return ''
 
 # 通过PID获取程序的监听端口
 def getProcPortByPid(pid: int) -> int:
-    command = ''' netstat -tlnp 2>/dev/null | grep ''' + str(pid) + ''' | awk '{print $4}' '''
-    result = runCmd(command)
-    port = result if result else ''
-    port = port.rsplit(':').pop()
-    if port.isdigit():
-        return int(port)
-    else:
-        return 0
+    for conn in psutil.net_connections():
+        if conn.status == 'LISTEN' and conn.pid == pid:
+            return conn.laddr.port
+    return 0
 
 # 判断端口号是否是被占用
 def isPortBusy(port: int) -> bool:
-    command = f' netstat -tlnp 2>/dev/null | grep :{port}'
-    if runCmd(command):
-        return True
+    for conn in psutil.net_connections():
+        if conn.status == 'LISTEN' and conn.laddr.port == port:
+            return True
     return False
 
 # 判断某文件是否存在
@@ -452,18 +456,20 @@ def queryPerf(conn: Connection, sid: str) -> None:
             conn.socketio.emit('perf', {'data': {'cpu': cpu, 'ram': ram}})
             time.sleep(2)
     except Exception as e:
+        logging.error(f'性能监控异常：{e}')
         conn.socketio.emit('perf', {'data': {'cpu': '获取异常', 'ram': '获取异常'}})
     ...
 
 # 根据PID返回进程占用的CPU与内存使用量
 def getPerfByPid(pid: int) -> list:
-    command = ''' ps -up ''' + str(pid) + ''' --no-header 2>/dev/null | awk '{print $3"% "$6}' '''
-    result = runCmd(command, log=False)
-    perf = result if result else ''
-    perf_list = perf.split(' ')
-    if len(perf_list) < 2:
-        return '0.0%', '0MB'
-    return perf_list
+    cpu_percent = '0.0%'
+    memory_info = '0MB'
+    try:
+        process = psutil.Process(pid)
+        cpu_percent = process.cpu_percent(interval=1.0)
+        memory_info = process.memory_info().rss
+    except psutil.NoSuchProcess:...
+    return f'{cpu_percent}%', memory_info
 
 # 寻找所有指定目录下的新月杀扩展包
 def getPackListFromDir(directory: str) -> dict:

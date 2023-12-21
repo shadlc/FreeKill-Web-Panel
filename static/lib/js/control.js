@@ -75,8 +75,8 @@ function refreshDetails() {
     refreshPlayerList(info.player_list);
     refreshRoomList(info.room_list);
     refreshPackList(info.pack_list);
-    if(info.runtime != 0) {
-      start_time = Date.now() - timeToTimeStamp(info.runtime) * 1000;
+    if(info.uptime != 0) {
+      start_time = Date.now() - info.uptime * 1000;
     } else {
       start_time = 0;
     }
@@ -89,8 +89,8 @@ function refreshTime() {
   if(start_time == 0) {
     document.getElementById('server_time').innerHTML = '已停止';
   } else {
-    let running_time = Date.now() - start_time;
-    let string_time = formatTime(running_time);
+    let uptime = Date.now() - start_time;
+    let string_time = formatTime(uptime);
     document.getElementById('server_time').innerHTML = string_time;
   }
 }
@@ -242,7 +242,7 @@ socket.on('perf', function(data) {
   if(data.data) {
     document.getElementById('server_cpu').innerHTML = data.data.cpu;
     document.getElementById('server_ram').innerHTML
-      = /^\d+$/.test(data.data.ram)?formatSize(data.data.ram*1000):data.data.ram;
+      = /^\d+$/.test(data.data.ram)?formatSize(data.data.ram):data.data.ram;
   }
 });
 socket.on('disconnect', () => {
