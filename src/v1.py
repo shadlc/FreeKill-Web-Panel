@@ -1,5 +1,6 @@
-import json
+import os
 import re
+import json
 import time
 from flask import Response
 from flask_classful import FlaskView, route, request
@@ -89,8 +90,8 @@ class V1API(FlaskView):
             return restful(409, f'该端口已被占用：{port}')
         elif port < 1025 or port > 65535:
             return restful(409, f'该端口不可用：{port}')
-        elif not isFileExists(f'{path}/FreeKill'):
-            return restful(409, f'该路径无效')
+        elif not isFileExists(os.path.join(path,'FreeKill')):
+            return restful(409, f'该路径无效\n确保该路径下存在可执行的“FreeKill”文件')
         elif match := re.search(r'([<>:;"\\|\?\*\x00-\x1F\x7F\'\`\s])', path):
             result = match.groups()[0]
             return restful(409, f'该服务器路径存在不可用字符：<{result}>')
@@ -105,7 +106,7 @@ class V1API(FlaskView):
             "motd": motd,
             "enableBots": enable_bots,
         }):
-            return restful(400, f'服务器配置写入错误，启动失败：{e}')
+            return restful(400, f'服务器配置写入错误，启动失败：\n{e}')
         pid = startGameServer(name, port, path)
         if pid == 0:
             return restful(400, '服务器启动失败，请联系管理员')
