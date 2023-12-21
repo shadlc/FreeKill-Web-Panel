@@ -143,27 +143,28 @@ async function refreshPackList(pack_list) {
     let style = '';
     let info_style = '';
     if(pack_count) {
-      badge += '<badge>'+pack_count+'子包</badge>'
+      badge += '<badge>'+pack_count+'子包</badge>';
     } else {
-      badge += '<badge>无子包</badge>'
+      badge += '<badge>无子包</badge>';
     }
     if(pack_list[code].enabled === 0) {
       style = ' style="opacity:0.6;"'
       badge += '<badge>未启用</badge>'
     }
-    if(!url) {
-      badge += '<badge>内置包</badge>'
-      info_style = ' style="display:none;"'
+    if(url) {
+      badge += '<badge>可更新包</badge>';
+    } else {
+      info_style = ' style="display:none;"';
     }
 
     let packs = ''
     for(let pack in pack_list[code].packs) {
       let pack_info = pack_list[code].packs[pack]
-      let pack_type = '角色包'
+      let pack_type = '角色包';
       if(pack_info.type == 'card') {
-        pack_type = '卡牌包'
+        pack_type = '卡牌包';
       } else if(pack_info.type == 'mode') {
-        pack_type = '模式包'
+        pack_type = '模式包';
       }
       packs += `
       <div class="capsule-box">
@@ -174,7 +175,7 @@ async function refreshPackList(pack_list) {
         <i class="bi" title="子包类型">&#xF2C9;</i>
         <span title="`+pack_type+`">`+pack_type+`</span>
       </div>
-      `
+      `;
     }
 
     let div = `

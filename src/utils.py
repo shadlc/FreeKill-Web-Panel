@@ -499,10 +499,10 @@ def extractExtension(root_path: str, lua_file: str) -> tuple:
     lua_code = open(lua_path, encoding='utf-8').read()
     lua_code = '\n'.join([line for line in lua_code.split('\n') if '--' not in line])
 
-    if result := re.search(r'extension.extensionName[^"]*"([^"]*)', lua_code):
+    if result := re.search(r'extension.extensionName[^"\']*["\']([^"\']*)', lua_code):
         extension_name = result.groups()[0]
 
-    package_list = re.findall(r'Package(:new)?\("([^"]*)"[, ]*(Package\.[^\)\s]*|[^\)\s]*)', lua_code)
+    package_list = re.findall(r'Package(:new)?\(["\']([^"\']*)["\'][, ]*(Package\.[^\)\s]*|[^\)\s]*)', lua_code)
     for _, package, pack_type in package_list:
         if pack_type == 'Package.CardPack':
             pack_type = 'card'
@@ -514,7 +514,7 @@ def extractExtension(root_path: str, lua_file: str) -> tuple:
             'name': '',
             'type': pack_type,
         }
-    mode_package_list = re.findall(r'fk.CreateGameMode\(?{[\S\s]*name[^"]*"([^"]*)[\S\s]*}\)?', lua_code)
+    mode_package_list = re.findall(r'fk.CreateGameMode\(?{[\S\s]*name[^"\']*"([^"\']*)[\S\s]*}\)?', lua_code)
     for package in mode_package_list:
         pack_dict[package] = {
             'name': '',
@@ -524,11 +524,11 @@ def extractExtension(root_path: str, lua_file: str) -> tuple:
     if 'i18n' not in lua_file or 'zh_CN' in lua_file:
         trans_table_list = re.findall(r'Fk:loadTranslationTable\(?{([\S\s]+)}\)?', lua_code)
         for table in trans_table_list:
-            matches = re.findall(r'\["(.+)"\][^"]*"(.+)"', table)
+            matches = re.findall(r'\[["\'](.+)["\']\][^/]= ]*["\'](.+)["\']', table)
             trans_dict.update({key: value for key, value in matches})
 
-    require_list = re.findall(r'require[^"]*"(.+)"', lua_code)
-    dofile_list = re.findall(r'dofile[^"]*"(.+)"', lua_code)
+    require_list = re.findall(r'require[^"\']*["\'](.+)["\']', lua_code)
+    dofile_list = re.findall(r'dofile[^"\']*["\'](.+)["\']', lua_code)
     for extra_file in (require_list + dofile_list):
         extra_file = extra_file.replace('.','/')
         if '/lua' in extra_file:
