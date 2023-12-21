@@ -116,7 +116,7 @@ class V1API(FlaskView):
         return restful(200, f'服务器已添加并启动')
 
     @route('start_server', methods=['GET'])
-    def restart_server(self):
+    def start_server(self):
         server_name = request.args.get('name', '')
         server_list = self.controller.getList()
         for server in server_list:

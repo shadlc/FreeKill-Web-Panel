@@ -182,16 +182,13 @@ def startGameServer(name: str, port: int, path: str) -> int:
     command = f''' cd {path};tmux new -d -s "FreeKill-{name}" "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
     logging.debug(f' >>> 独立进程   执行指令 {command}')
     subprocess.Popen([command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).wait()
-    command = ''' ps -ef | grep -vE '(tee|grep)' | grep './FreeKill -s ''' + str(port) + '''' | awk '{print $2}' '''
-    result = ''
-    attempt = 0
-    while not result and attempt <= 3:
-        result = runCmd(command)
-        if result.isdigit():
-            return int(result)
-        time.sleep(1)
-        attempt += 1
-    return 0 
+    try:
+        for process in psutil.process_iter():
+            cmd = process.cmdline()
+            if './FreeKill' in cmd and '-s' in cmd and f'{port}' in cmd:
+                return process.pid    
+    except psutil.NoSuchProcess:...
+    return 0
 
 # 停止服务器
 def stopGameServer(name: str) -> bool:
@@ -464,6 +461,8 @@ def queryPerf(conn: Connection, sid: str) -> None:
 def getPerfByPid(pid: int) -> list:
     cpu_percent = '0.0%'
     memory_info = '0MB'
+    if not pid:
+        return cpu_percent, memory_info
     try:
         process = psutil.Process(pid)
         cpu_percent = process.cpu_percent(interval=1.0)
