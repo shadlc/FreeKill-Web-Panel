@@ -1,7 +1,6 @@
 import json
-import time
 
-from src.utils import getProcessUptime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, startGameServer, getServerList, getPlayerList, getRoomList, getPackList
+from src.utils import getProcessUptime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, startGameServer, isHandledByPid, getServerInfo, getPlayerList, getRoomList, getPackList
 
 
 class Server:
@@ -27,13 +26,16 @@ class Server:
         self.player_dict = {}
         self.room_dict = {}
         self.pack_dict = {}
+        self.handled = False
+        self.session_type = 'screen'
 
-    def init(self, name:str, port: int, pid: int = 0, path: str = '') -> None:
+    def init(self, name:str, port: int, pid: int = 0, path: str = '', session_type = '') -> None:
         if name == '' or port == '':
             return
         self.name = name
         self.port = port
         self.pid = pid
+        self.session_type = session_type
         if pid:
             self.path = getProcPathByPid(self.pid)
         elif path:
@@ -48,18 +50,17 @@ class Server:
             self.status = '版本读取异常'
 
     def start(self) -> str | None:
-        if pid := startGameServer(self.name, self.port, self.path):
+        if pid := startGameServer(self.name, self.port, self.path, self.session_type):
             self.pid = pid
             return
         return '服务器启动失败，该端口可能已被占用'
 
-    def info(self) -> dict:
+    def info(self, server_list: list) -> dict:
         uptime = '0'
         if not isPortBusy(self.port):
             self.status = '已停止'
         else:
             self.status = '运行中'
-            server_list = getServerList()
             for server_info in server_list:
                 server_name = server_info[0] if len(server_info) else ''
                 server_pid = int(server_info[1]) if len(server_info) >=2 else self.pid
@@ -67,7 +68,14 @@ class Server:
                     self.pid = server_pid
                     uptime = getProcessUptime(self.pid)
                     break
-            self.readPlayers()
+            info = getServerInfo(self.name, self.port)
+            if info:
+                [self.version,
+                 self.icon_url,
+                 self.motd,
+                 self.capacity,
+                 self.players,
+                 self.ip] = info
 
         return {
             'name': self.name,
@@ -80,14 +88,16 @@ class Server:
             'version': getVersionFromPath(self.path),
             'uptime': uptime,
             'pid': self.pid,
+            'session_type': self.session_type,
         }
 
-    def details(self) -> dict:
+    def details(self, server_list: list) -> dict:
         self.readConfig()
         self.readPacks()
         if isPortBusy(self.port):
             self.readRooms()
-        info_dict = self.info()
+            self.handled = isHandledByPid(self.pid)
+        info_dict = self.info(server_list)
         info_dict = {
             **info_dict,
             'ban_words': self.ban_words,
@@ -98,6 +108,8 @@ class Server:
             'pack_list': self.pack_dict,
             'room_list': self.room_dict,
             'player_list': self.player_dict,
+            'session_type': self.session_type,
+            'handled': self.handled,
         }
         return info_dict
 
@@ -119,11 +131,11 @@ class Server:
             return False
 
     def readPlayers(self) -> None:
-        self.player_dict = getPlayerList(self.name)
+        self.player_dict = getPlayerList(self.name, self.session_type)
         self.players = len(self.player_dict)
 
     def readRooms(self) -> None:
-        self.room_dict = getRoomList(self.name)
+        self.room_dict = getRoomList(self.name, self.session_type)
 
     def readPacks(self) -> None:
         self.pack_dict = getPackList(self.path)

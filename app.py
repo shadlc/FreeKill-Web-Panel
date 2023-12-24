@@ -2,7 +2,7 @@ from platform import system
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
 
-from src.utils import runCmd, tailLog, queryPerf
+from src.utils import tailLog, queryPerf
 from src.v1 import V1API
 from src.controller import Controller
 from src.connection import Connection
@@ -38,8 +38,6 @@ def disconnect():
 if __name__ == '__main__':
     if system() not in ['Linux']:
         print('不支持该平台')
-    elif not runCmd('tmux -V 2>/dev/null'):
-        print('未检测到tmux，请安装后继续')
     else:
         V1API.register(app, route_base='/v1')
         V1API.controller = controller

@@ -340,12 +340,10 @@ document.getElementById('restart_btn').addEventListener('click', ()=>{
             startServer(server_name, (data)=>{
               if(data?.retcode == 0) {
                 pre.innerHTML += '\n服务器重启成功';
-                final_callback(true);
               } else {
-                showDialog(data?.msg, '提示', ()=>{
-                  final_callback(false);
-                });
+                pre.innerHTML += '\n服务器重启失败';
               }
+              final_callback(true);
               refreshDetails();
             }, base_url_slash);
           } else {

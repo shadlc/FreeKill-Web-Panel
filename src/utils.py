@@ -4,12 +4,12 @@ import sys
 import json
 import time
 import base64
+import psutil
+import socket
 import logging
 import sqlite3
-import psutil
 import requests
 import subprocess
-import pyscreen
 
 from flask import jsonify
 from src.connection import Connection
@@ -65,7 +65,7 @@ def getVersionFromPath(path: str) -> str:
     return ''
 
 # 运行Bash指令并获取结果
-def runCmd(cmd: str, log=True) -> str | None:
+def runCmd(cmd: str, log=True) -> str:
     try:
         stime = time.time()
         comm = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
@@ -75,10 +75,15 @@ def runCmd(cmd: str, log=True) -> str | None:
             logging.debug(f' >>> 耗时({"{:.3f}".format(etime - stime)})执行指令 {cmd}')
         if stderr:
             logging.info(f' >>> 执行上述指令出错：{stderr}')
-        return stdout.strip()
+        if stdout:
+            return stdout.strip()
+        elif stderr:
+            return stderr.strip()
+        else:
+            return 'ok'
     except Exception as e:
         logging.error(f'执行外部指令出错：{e}')
-        return None
+        return ''
 
 # 从指定PID进程获取其运行时长
 def getProcessUptime(pid: int) -> str:
@@ -92,31 +97,71 @@ def getProcessUptime(pid: int) -> str:
 
 # 获取正在运行的FreeKill服务器列表以及其信息
 def getServerList() -> list[str]:
-    command = ''' tmux ls -F "#{session_name} #{pane_pid}" 2>/dev/null '''
-    name_p_pid = runCmd(command)
-    name_p_pid = name_p_pid if name_p_pid else ''
-    name_p_pid_list = [i.split(' ') for i in [j for j in name_p_pid.split('\n')]]
+    # 获取tmux列表
+    command = ''' tmux ls -F "#{pane_pid} #{session_name}" 2>/dev/null '''
+    spid_name = runCmd(command)
+    spid_list = [i.split(' ') for i in [j for j in spid_name.split('\n')]]
+    spid_dict = {int(i[0]): [i[1], 'tmux'] for i in spid_list if len(i) > 1}
+    # 获取screen列表
+    command = ''' screen -ls | sed '1d;$d' | awk '{print $1}' | sed -E 's/\.([^.]*)/ \\1/' '''
+    spid_name = runCmd(command)
+    spid_list = [i.split(' ') for i in [j for j in spid_name.split('\n')]]
+    spid_dict.update({int(i[0]): [i[1], 'screen'] for i in spid_list if len(i) > 1})
 
-    command = ''' ps -ef | grep -vE '(tee|grep)' | grep './FreeKill -s' | awk '{print $3" "$2" "$10}' '''
-    pid_port = runCmd(command)
-    pid_port = pid_port if pid_port else ''
-    pid_port_list = [i.split(' ') for i in [j for j in pid_port.split('\n')]]
-
-    pid_port_dict = {}
-    for item in pid_port_list:
-        if item == ['']: continue
-        pid_port_dict[item[0]] = [item[1], item[2]]
+    spid_pid_port_list = []
+    try:
+        for process in psutil.process_iter():
+            cmd = process.cmdline()
+            if './FreeKill' in cmd and '-s' in cmd and 'SCREEN' not in cmd:
+                port = int(cmd[2]) if len(cmd) > 2 and cmd[2].isdigit() else ''
+                spid_pid_port_list.append([getSessionPid(process.pid), process.pid, port])
+    except psutil.NoSuchProcess:...
 
     server_list = []
-    for item in name_p_pid_list:
-        if item == ['']: continue
-        name = item[0].replace('FreeKill-', '')
-        p_pid = item[1]
-        if p_pid in pid_port_dict:
-            pid = int(pid_port_dict[p_pid][0])
-            port = int(pid_port_dict[p_pid][1])
-            server_list.append([name, pid, port])
+    for item in spid_pid_port_list:
+        spid = item[0]
+        pid = item[1]
+        port = item[2]
+        if spid in spid_dict:
+            name = spid_dict[spid][0]
+            session_type = spid_dict[spid][1]
+            server_list.append([name, pid, port, session_type])
     return server_list
+
+# 根据PID获取该程序所属的Tmux或则Screen的PID
+def getSessionPid(pid: int, recursion: bool=True) -> int:
+    if pid == 1 or pid == 0:
+        return 0
+    try:
+        for process in psutil.process_iter():
+            if pid == process.pid:
+                cmd = process.cmdline()
+                if 'SCREEN' in cmd:
+                    return process.pid
+                elif 'bash' in cmd:
+                    screen_pid = getSessionPid(process.ppid(), False)
+                    if screen_pid:
+                        return screen_pid
+                    return process.pid
+                elif recursion:
+                    return getSessionPid(process.ppid())
+    except psutil.NoSuchProcess:...
+    return 0
+
+# 根据PID判断该程序是否是FKWP启动的
+def isHandledByPid(pid: int) -> bool:
+    if pid == 1 or pid == 0:
+        return False
+    try:
+        for process in psutil.process_iter():
+            if pid == process.pid:
+                cmd = process.cmdline()
+                if 'tee ./fk-latest.log' in ' '.join(cmd):
+                    return True
+                else:
+                    return isHandledByPid(process.ppid())
+    except psutil.NoSuchProcess:...
+    return False
 
 # 通过PID获取程序的执行路径
 def getProcPathByPid(pid: int) -> str:
@@ -178,22 +223,31 @@ def restful(code: int, msg: str = '', data: dict = {}) -> None:
     }), code
 
 # 启动服务器,返回PID
-def startGameServer(name: str, port: int, path: str) -> int:
-    command = f''' cd {path};tmux new -d -s "FreeKill-{name}" "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
+def startGameServer(name: str, port: int, path: str, session_type: str) -> int:
+    if session_type == 'tmux':
+        command = f''' cd {path}; tmux new -d -s "{name}" "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
+    else:
+        command = f''' cd {path}; screen -dmS "{name}" bash -c "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
     logging.debug(f' >>> 独立进程   执行指令 {command}')
     subprocess.Popen([command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).wait()
+    time.sleep(0.5)
     try:
         for process in psutil.process_iter():
             cmd = process.cmdline()
             if './FreeKill' in cmd and '-s' in cmd and f'{port}' in cmd:
-                return process.pid    
+                return process.pid
     except psutil.NoSuchProcess:...
     return 0
 
 # 停止服务器
-def stopGameServer(name: str) -> bool:
-    command = f''' tmux send-keys -t "FreeKill-{name}" C-d '''
-    if runCmd(command) != None:
+def stopGameServer(name: str, session_type: str) -> bool:
+    if session_type == 'tmux':
+        command = f''' tmux send-keys -t "{name}" C-d '''
+    else:
+        command = f''' screen -S {name} -X stuff "\004" '''
+    result = runCmd(command)
+    print(result)
+    if result != '':
         return True
     return False
 
@@ -265,36 +319,41 @@ def writeGameConfig(path: str, config: dict) -> str | None:
         logging.error(e)
         return e
 
-# 简单的对tmux窗口进行内容捕获
-def captureTmux(tid: str) -> str:
-    command = f' tmux capture-pane -pS - -t {tid} 2>&1'
+# 在指定screen内执行语句
+def runScreenCmd(name: str, cmd: str) -> str:
+    command = command = f' screen -S {name} -X stuff "{cmd}\n" '
     result = runCmd(command)
-    result = result if result else ''
+    # TODO
     return result
 
 # 在指定tmux内执行语句，并对Tmux窗口进行内容捕获
-def runTmuxCmd(tid: str, cmd: str) -> str:
-    command = f' tmux send-keys -t {tid} "{cmd}" Enter;sleep 0.1;tmux capture-pane -peS - -t {tid} 2>&1'
+def runTmuxCmd(name: str, cmd: str) -> str:
+    command = f' tmux send-keys -t {name} "{cmd}" Enter;sleep 0.1;tmux capture-pane -peS - -t {name} 2>&1'
     result = runCmd(command)
-    result = result if result else ''
     return result
 
-# 获取指定服务器内在线人数
-def getPlayers(name: str) -> int:
-    captured = runTmuxCmd(f'FreeKill-{name}', 'lsplayer')
-    if captured and 'lsplayer\n' in captured:
-        player_text = captured.rsplit('lsplayer\n', 1)[1]
-    else:
-        player_text = ''
-    if match := re.search(r'Current (.*) online player\(s\)', player_text):
-        count = match.groups()[0]
-        if count.isdigit():
-            return int(count)
-    return 0
+# 使用UDP协议获取指定服务器信息
+def getServerInfo(name: str, port : int) -> list:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_address = ('127.0.0.1', port)
+    try:
+        message = 'fkGetDetail,127.0.0.1'
+        sock.sendto(message.encode(), server_address)
+        data, address = sock.recvfrom(10240)
+        server_data = json.loads(data.decode())
+        return server_data
+    except Exception as e:
+        logging.error(f'UDP连接服务器[{name}](127.0.0.1:{port})失败：{e}')
+    finally:
+        sock.close()
+    return []
 
 # 获取指定服务器内在线玩家列表
-def getPlayerList(name: str) -> dict:
-    captured = runTmuxCmd(f'FreeKill-{name}', 'lsplayer')
+def getPlayerList(name: str, session_type: str) -> dict:
+    if session_type == 'tmux':
+        captured = runTmuxCmd(name, 'lsplayer')
+    else:
+        captured = runScreenCmd(name, 'lsplayer')
     if captured and 'lsplayer\n' in captured:
         player_text = captured.rsplit('lsplayer\n', 1)[1]
     else:
@@ -309,8 +368,11 @@ def getPlayerList(name: str) -> dict:
     return player_dict
 
 # 获取指定服务器内已房间列表
-def getRoomList(name: str) -> dict:
-    captured = runTmuxCmd(f'FreeKill-{name}', 'lsroom')
+def getRoomList(name: str, session_type: str) -> dict:
+    if session_type == 'tmux':
+        captured = runTmuxCmd(name, 'lsroom')
+    else:
+        captured = runScreenCmd(name, 'lsroom')
     if captured and 'lsroom\n' in captured:
         room_text = captured.rsplit('lsroom\n', 1)[1]
     else:
@@ -356,16 +418,22 @@ def getPackList(path: str) -> dict:
         return pack_dict
 
 # 向指定服务器封禁玩家
-def banFromServer(server_name: str, player_name: str) -> bool:
-    captured = runTmuxCmd(f'FreeKill-{server_name}', f'ban {player_name}')
+def banFromServer(server_name: str, player_name: str, session_type: str) -> bool:
+    if session_type == 'tmux':
+        captured = runTmuxCmd(server_name, f'ban {player_name}')
+    else:
+        captured = runScreenCmd(server_name, f'ban {player_name}')
     result_text = captured.rsplit('ban\n', 1)[1]
     if re.search(r'Running command:', result_text):
         return True
     return False
 
 # 向指定服务器发送消息
-def sendMsgTo(name: str, msg: str) -> bool:
-    captured = runTmuxCmd(f'FreeKill-{name}', f'msg {msg}')
+def sendMsgTo(name: str, msg: str, session_type: str) -> bool:
+    if session_type == 'tmux':
+        captured = runTmuxCmd(name, f'msg {msg}')
+    else:
+        captured = runScreenCmd(name, f'msg {msg}')
     result_text = captured.rsplit('msg\n', 1)[1]
     if re.search(r'Banned', result_text):
         return True
@@ -398,13 +466,18 @@ def tailLog(conn: Connection, sid: str) -> None:
     try:
         date = time.strftime('%m/%d %H:%M:%S', time.localtime())
         path = ''
+        handled = False
         server_list = getServerList()
         for server in server_list:
             if conn.clients[sid].get('name') == server[0]:
                 path = getProcPathByPid(server[1])
-
+                handled = isHandledByPid(server[1])
         if path == '':
-            conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;32mI[0;0m] 服务器未启动，输入指令[0;33m start [0;0m启动服务器\n'})
+            conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;33mI[0;0m] 服务器未启动，输入指令[0;33m start [0;0m启动服务器\n'})
+        elif not handled:
+            conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;33mW[0;0m] 服务器不是由本程序接管启动，只能进行其他操作，无法与终端交互，请关闭服务器后由本程序接管启动，再刷新本页面实现与终端交互\n'})
+            while conn.contains(sid):
+                time.sleep(1)
         while conn.contains(sid) and not path and not conn.clients[sid].get('path'):
             time.sleep(0.1)
             continue
@@ -429,7 +502,7 @@ def tailLog(conn: Connection, sid: str) -> None:
                 else:
                     conn.socketio.emit('terminal', {'text': line})
     except Exception as e:
-        conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;32mI[0;0m] 读取日志异常: {e}\n'})
+        conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;31mI[0;0m] 读取日志异常: {e}\n'})
 
 # 根据文件名添加额外内容
 def appendFile(path: str, content: str) -> str | None:

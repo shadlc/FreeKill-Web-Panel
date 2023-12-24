@@ -7,6 +7,7 @@ from src.game_server import Server
 
 class Controller:
     def __init__(self) -> None:
+        self.server_list = []
         self.server_dict = {}
         self.list: list[Server | None] = []
         self.connection: Connection | None
@@ -25,19 +26,30 @@ class Controller:
                 self.list.append(server)
 
     def refreshRunning(self) -> None:
-        for server_info in getServerList():
+        self.server_list = getServerList()
+        del_server_list = []
+        for server_info in self.server_list:
             server_name = server_info[0] if len(server_info) else ''
             server_pid = int(server_info[1]) if len(server_info) >1 else 0
             server_port = int(server_info[2]) if len(server_info) >2 else 9527
+            server_type = server_info[3]
 
             if server_name and server_name not in [server.name for server in self.list]:
+                if del_server := [server for server in self.list if server.port == server_port]:
+                    del_server_list.append(del_server[0].name)
+                    self.list.remove(del_server[0])
                 server = Server()
-                server.init(server_name, server_port, server_pid)
+                server.init(server_name, server_port, server_pid, session_type=server_type)
                 self.list.append(server)
 
         for server in self.list:
             if not isPortBusy(server.port) and server.name not in self.server_dict:
                 self.list.remove(server)
+
+        for server_name in del_server_list:
+            if server_name in self.server_dict:
+                self.server_dict.pop(server_name)
+            saveServerToConfig(self.server_dict)
 
     def refreshConfig(self) -> None:
         self.server_dict = getServerFromConfig()

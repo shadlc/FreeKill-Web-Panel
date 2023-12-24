@@ -5,7 +5,7 @@ import time
 from flask import Response
 from flask_classful import FlaskView, route, request
 
-from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, appendFile
+from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile
 from src.game_server import Server
 from src.controller import Controller
 
@@ -24,7 +24,7 @@ class V1API(FlaskView):
         server_dict_list = []
         server_list = self.controller.getList()
         for server in server_list:
-            server_dict_list.append(server.info())
+            server_dict_list.append(server.info(self.controller.server_list))
         return restful(200, '', {'list': server_dict_list})
 
     @route('details', methods=['POST'])
@@ -32,7 +32,7 @@ class V1API(FlaskView):
         name = request.json.get('name', '')
         for server in self.controller.list:
             if server.name == name:
-                info_dict = server.details()
+                info_dict = server.details(self.controller.server_list)
                 return restful(200, '', info_dict)
         return restful(404, '未找到该服务器')
 
@@ -58,7 +58,12 @@ class V1API(FlaskView):
                 elif not is_port_busy:
                     return restful(405, '服务器未启动,请先启动')
                 else:
-                    runTmuxCmd(f'FreeKill-{name}', cmd)
+                    if server.session_type == 'tmux':
+                        runTmuxCmd(name, cmd)
+                    elif server.handled:
+                        runScreenCmd(name, cmd)
+                    else:
+                        return restful(403, '无法与终端交互，请关闭服务器后由本程序接管启动')
                     return restful(200, '')
         return restful(404, '未找到该服务器')
     
@@ -72,7 +77,7 @@ class V1API(FlaskView):
         capacity = int(request.json.get('capacity')) if request.json.get('capacity').isdigit() else 0
         temp_ban_time = int(request.json.get('temp_ban_time')) if request.json.get('temp_ban_time').isdigit() else 20
         motd = request.json.get('motd', '')
-        enable_bots = bool(request.json.get('enable_bots', True))
+        enable_bots = bool(request.json.get('enable_bots', None))
         
         server_list = self.controller.getList()
         if not name:
@@ -107,7 +112,7 @@ class V1API(FlaskView):
             "enableBots": enable_bots,
         }):
             return restful(400, f'服务器配置写入错误，启动失败：\n{e}')
-        pid = startGameServer(name, port, path)
+        pid = startGameServer(name, port, path, "screen")
         if pid == 0:
             return restful(400, '服务器启动失败，请联系管理员')
         server = Server()
@@ -141,7 +146,7 @@ class V1API(FlaskView):
         for server in server_list:
             if not isPortBusy(server.port):
                 return restful(405, '服务器已经是停止状态')
-            if server.name == server_name and stopGameServer(server.name):
+            if server.name == server_name and stopGameServer(server.name, server.session_type):
                 return restful(200, '服务器停止成功')
 
         return restful(404, '无法找到该服务器')

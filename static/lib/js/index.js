@@ -51,12 +51,17 @@ function render_server_list(servers){
   let list_div = document.getElementById('server_list');
   for(let i in servers){
     let info = servers[i];
+    let badge = '';
+    if(info.session_type) {
+      badge = '<badge style="vertical-align:super;">'+info.session_type+'</badge>';
+    }
     let server_div = `
     <div id="server`+info.pid+`" class="server-item">
         <img class="server-icon" src="`+info.icon+`" />
         <div class="server-info">
             <a class="server-link" href="control/`+info.name+`">
-                <h2 class="server-name">`+info.name+`</h2>
+                <span class="server-name hide">`+info.name+`</span>
+                <h2 class="server-name-badge">`+info.name+badge+`</h2>
                 <p1 class="server-desc">`+info.desc+`</p1>
                 <span class="server-pid">`+info.pid+`</span>
             </a>
