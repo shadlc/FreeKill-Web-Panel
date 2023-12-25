@@ -77,8 +77,6 @@ def runCmd(cmd: str, log=True) -> str:
             logging.info(f' >>> 执行上述指令出错：{stderr}')
         if stdout:
             return stdout.strip()
-        elif stderr:
-            return stderr.strip()
         else:
             return 'ok'
     except Exception as e:
@@ -107,7 +105,7 @@ def getServerList() -> list[str]:
     spid_name = runCmd(command)
     spid_list = [i.split(' ') for i in [j for j in spid_name.split('\n')]]
     spid_dict.update({int(i[0]): [f'{i[0]}.{i[1]}', 'screen'] for i in spid_list if len(i) > 1})
- 
+
     spid_pid_port_list = []
     try:
         for process in psutil.process_iter():

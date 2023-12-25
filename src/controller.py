@@ -1,4 +1,3 @@
-
 import time
 
 from src.utils import isPortBusy, getServerList, getServerFromConfig, saveServerToConfig, getFKVersion
@@ -19,7 +18,7 @@ class Controller:
         for server_name in self.server_dict:
             server_port = self.server_dict[server_name][0]
             server_path = self.server_dict[server_name][1]
-            session_type = self.server_dict[server_name][2]
+            session_type = self.server_dict[server_name][2] if len(self.server_dict[server_name]) > 2 else 'tmux'
 
             if server_name not in [server.name for server in self.list]:
                 server = Server()
