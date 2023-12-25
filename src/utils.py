@@ -22,6 +22,9 @@ if '--debug' in sys.argv[1:]:
 else:
     logging.basicConfig(level=logging.INFO)
 
+hasTmux = None
+hasScreen = None
+
 # 从指定图片链接获取base64格式的图片数据并返回
 def getImgBase64FromURL(url: str) -> str:
     try:
@@ -83,6 +86,22 @@ def runCmd(cmd: str, log=True) -> str:
         logging.error(f'执行外部指令出错：{e}')
         return ''
 
+# 运行Bash指令并判断是否成功
+def runCmdCorrect(cmd: str, log=True) -> str:
+    stime = time.time()
+    try:
+        subprocess.run(cmd)
+        return True
+    except Exception as e:
+        return False
+    if log:
+        logging.debug(f' >>> 耗时({"{:.3f}".format(etime - stime)})执行指令 {cmd}')
+
+if hasTmux == None:
+    hasTmux = runCmdCorrect('tmux -V')
+if hasScreen == None:
+    hasScreen = runCmdCorrect('screen -v')
+
 # 从指定PID进程获取其运行时长
 def getProcessUptime(pid: int) -> str:
     uptime = 0
@@ -95,16 +114,19 @@ def getProcessUptime(pid: int) -> str:
 
 # 获取正在运行的FreeKill服务器列表以及其信息
 def getServerList() -> list[str]:
+    spid_dict = {}
     # 获取tmux列表
-    command = ''' tmux ls -F "#{pane_pid} #{session_name}" 2>/dev/null '''
-    spid_name = runCmd(command)
-    spid_list = [i.split(' ') for i in [j for j in spid_name.split('\n')]]
-    spid_dict = {int(i[0]): [i[1], 'tmux'] for i in spid_list if len(i) > 1}
+    if hasTmux:
+        command = ''' tmux ls -F "#{pane_pid} #{session_name}" 2>/dev/null '''
+        spid_name = runCmd(command)
+        spid_list = [i.split(' ') for i in [j for j in spid_name.split('\n')]]
+        spid_dict.update({int(i[0]): [i[1], 'tmux'] for i in spid_list if len(i) > 1})
     # 获取screen列表
-    command = ''' screen -ls | sed '1d;$d' | awk '{print $1}' | sed -E 's/\.([^.]*)/ \\1/' '''
-    spid_name = runCmd(command)
-    spid_list = [i.split(' ') for i in [j for j in spid_name.split('\n')]]
-    spid_dict.update({int(i[0]): [f'{i[0]}.{i[1]}', 'screen'] for i in spid_list if len(i) > 1})
+    if hasScreen:
+        command = ''' screen -ls | sed '1d;$d' | awk '{print $1}' | sed -E 's/\.([^.]*)/ \\1/' '''
+        spid_name = runCmd(command)
+        spid_list = [i.split(' ') for i in [j for j in spid_name.split('\n')]]
+        spid_dict.update({int(i[0]): [f'{i[0]}.{i[1]}', 'screen'] for i in spid_list if len(i) > 1})
 
     spid_pid_port_list = []
     try:
@@ -357,7 +379,7 @@ def getPlayerList(name: str, session_type: str, path: str) -> dict:
     if session_type == 'tmux':
         captured = runTmuxCmd(name, 'lsplayer')
     else:
-        captured = runScreenCmd(name, 'lsplayer', path, pid)
+        captured = runScreenCmd(name, 'lsplayer', path)
     if captured and 'lsplayer\n' in captured:
         player_text = captured.rsplit('lsplayer\n', 1)[1]
     else:
@@ -376,7 +398,7 @@ def getRoomList(name: str, session_type: str, path: str) -> dict:
     if session_type == 'tmux':
         captured = runTmuxCmd(name, 'lsroom')
     else:
-        captured = runScreenCmd(name, 'lsroom', path, pid)
+        captured = runScreenCmd(name, 'lsroom', path)
     if captured and 'lsroom\n' in captured:
         room_text = captured.rsplit('lsroom\n', 1)[1]
     else:
@@ -426,7 +448,7 @@ def banFromServer(server_name: str, player_name: str, session_type: str, path: s
     if session_type == 'tmux':
         captured = runTmuxCmd(server_name, f'ban {player_name}')
     else:
-        captured = runScreenCmd(server_name, f'ban {player_name}', path, pid)
+        captured = runScreenCmd(server_name, f'ban {player_name}', path)
     result_text = captured.rsplit('ban\n', 1)[1]
     if re.search(r'Running command:', result_text):
         return True
@@ -437,7 +459,7 @@ def sendMsgTo(name: str, msg: str, session_type: str, path: str) -> bool:
     if session_type == 'tmux':
         captured = runTmuxCmd(name, f'msg {msg}')
     else:
-        captured = runScreenCmd(name, f'msg {msg}', path, pid)
+        captured = runScreenCmd(name, f'msg {msg}', path)
     result_text = captured.rsplit('msg\n', 1)[1]
     if re.search(r'Banned', result_text):
         return True
