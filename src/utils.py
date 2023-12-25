@@ -28,7 +28,7 @@ hasScreen = None
 # 从指定图片链接获取base64格式的图片数据并返回
 def getImgBase64FromURL(url: str) -> str:
     try:
-        response = requests.get(url, timeout=2000)
+        response = requests.get(url, timeout=3)
         if response.status_code == 200:
             image_data = response.content
             base64_data = 'data:image/png;base64,' + base64.b64encode(image_data).decode('utf-8')
