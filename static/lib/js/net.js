@@ -123,6 +123,18 @@ export function getDetailInfo(name, callback, base_url='') {
   post(base_url + '/v1/details', data, callback);
 }
 
+// 获取服务器玩家列表
+export function getPlayerListInfo(name, callback, base_url='') {
+  let data = {'name': name};
+  post(base_url + '/v1/player_list', data, callback);
+}
+
+// 获取服务器房间列表
+export function getRoomListInfo(name, callback, base_url='') {
+  let data = {'name': name};
+  post(base_url + '/v1/room_list', data, callback);
+}
+
 // 获取服务器配置文件
 export function getServerConfig(name, callback, base_url='') {
   get(base_url + '/v1/config?name='+name, callback);

@@ -85,7 +85,7 @@ function render_server_list(servers){
     list_div.insertAdjacentHTML('BeforeEnd', server_div);
   }
   if(list_div.innerHTML == '') {
-    const empty_div = `<span id="empty_text">服务器列表为空，请点击左上角</span>`
+    const empty_div = `<span id="empty_text" style="font-size:1.5rem;">服务器列表为空，请点击左上角</span>`
     list_div.insertAdjacentHTML('BeforeEnd', empty_div);
   }
   initServerToggleBtn();
@@ -175,12 +175,17 @@ function initServerToggleBtn() {
 }
 
 // 添加服务器
-document.getElementById("start_server_btn").addEventListener("click", ()=>{
-  let btn = document.getElementById("start_server_btn");
+document.getElementById('start_tmux_server_btn').addEventListener('click', ()=>{
+  let btn = document.getElementById('start_tmux_server_btn');
   btn.disabled = true;
-  add_server(()=>{btn.disabled = false;});
+  add_server('tmux', ()=>{btn.disabled = false;});
 });
-function add_server(callback) {
+document.getElementById('start_screen_server_btn').addEventListener('click', ()=>{
+  let btn = document.getElementById('start_screen_server_btn');
+  btn.disabled = true;
+  add_server('screen', ()=>{btn.disabled = false;});
+});
+function add_server(session_type, callback) {
   let name = document.getElementById('server_name_input').value
   let port = document.getElementById('server_port_input').value
   let path = document.getElementById('server_path_input').value
@@ -190,15 +195,16 @@ function add_server(callback) {
   let temp_ban_time = document.getElementById('temp_ban_time_input').value
   let motd = document.getElementById('motd_input').value
   let enable_bots = document.getElementById('enable_bots_input').value
-  let data = {"name": name,
-              "port": port,
-              "path": path,
-              "desc": desc,
-              "icon": icon_url,
-              "capacity": capacity,
-              "temp_ban_time": temp_ban_time,
-              "motd": motd,
-              "enable_bots": enable_bots,
+  let data = {'name': name,
+              'port': port,
+              'path': path,
+              'desc': desc,
+              'icon': icon_url,
+              'capacity': capacity,
+              'temp_ban_time': temp_ban_time,
+              'motd': motd,
+              'enable_bots': enable_bots,
+              'session_type': session_type
             }
   fetch('v1/add_server', {
     method:'POST',

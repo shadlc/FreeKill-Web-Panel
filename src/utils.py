@@ -106,15 +106,15 @@ def getServerList() -> list[str]:
     command = ''' screen -ls | sed '1d;$d' | awk '{print $1}' | sed -E 's/\.([^.]*)/ \\1/' '''
     spid_name = runCmd(command)
     spid_list = [i.split(' ') for i in [j for j in spid_name.split('\n')]]
-    spid_dict.update({int(i[0]): [i[1], 'screen'] for i in spid_list if len(i) > 1})
-
+    spid_dict.update({int(i[0]): [f'{i[0]}.{i[1]}', 'screen'] for i in spid_list if len(i) > 1})
+ 
     spid_pid_port_list = []
     try:
         for process in psutil.process_iter():
             cmd = process.cmdline()
             if './FreeKill' in cmd and '-s' in cmd and 'SCREEN' not in cmd:
                 port = int(cmd[2]) if len(cmd) > 2 and cmd[2].isdigit() else ''
-                spid_pid_port_list.append([getSessionPid(process.pid), process.pid, port])
+                spid_pid_port_list.append([getSessionPid(process.ppid()), process.pid, port])
     except psutil.NoSuchProcess:...
 
     server_list = []
@@ -138,10 +138,10 @@ def getSessionPid(pid: int, recursion: bool=True) -> int:
                 cmd = process.cmdline()
                 if 'SCREEN' in cmd:
                     return process.pid
-                elif 'bash' in cmd:
-                    screen_pid = getSessionPid(process.ppid(), False)
-                    if screen_pid:
-                        return screen_pid
+                elif 'bash' in cmd or '-bash' in cmd:
+                    session_pid = getSessionPid(process.ppid(), False)
+                    if session_pid:
+                        return session_pid
                     return process.pid
                 elif recursion:
                     return getSessionPid(process.ppid())
@@ -244,7 +244,7 @@ def stopGameServer(name: str, session_type: str) -> bool:
     if session_type == 'tmux':
         command = f''' tmux send-keys -t "{name}" C-d '''
     else:
-        command = f''' screen -S {name} -X stuff "\004" '''
+        command = f''' screen -S {name} -X stuff "\004\004" '''
     result = runCmd(command)
     print(result)
     if result != '':
@@ -319,11 +319,17 @@ def writeGameConfig(path: str, config: dict) -> str | None:
         logging.error(e)
         return e
 
-# 在指定screen内执行语句
-def runScreenCmd(name: str, cmd: str) -> str:
+# 在指定screen内执行语句，并获取返回值
+def runScreenCmd(name: str, cmd: str, path: str='') -> str:
     command = command = f' screen -S {name} -X stuff "{cmd}\n" '
-    result = runCmd(command)
-    # TODO
+    if not path:
+        return runCmd(command)
+    log_file = f'{path}/fk-latest.log'
+    with open(log_file) as f:
+        f.seek(0, 2)
+        runCmd(command)
+        time.sleep(0.1)
+        result = rmSpecialChar(f.read())
     return result
 
 # 在指定tmux内执行语句，并对Tmux窗口进行内容捕获
@@ -349,11 +355,11 @@ def getServerInfo(name: str, port : int) -> list:
     return []
 
 # 获取指定服务器内在线玩家列表
-def getPlayerList(name: str, session_type: str) -> dict:
+def getPlayerList(name: str, session_type: str, path: str) -> dict:
     if session_type == 'tmux':
         captured = runTmuxCmd(name, 'lsplayer')
     else:
-        captured = runScreenCmd(name, 'lsplayer')
+        captured = runScreenCmd(name, 'lsplayer', path, pid)
     if captured and 'lsplayer\n' in captured:
         player_text = captured.rsplit('lsplayer\n', 1)[1]
     else:
@@ -368,11 +374,11 @@ def getPlayerList(name: str, session_type: str) -> dict:
     return player_dict
 
 # 获取指定服务器内已房间列表
-def getRoomList(name: str, session_type: str) -> dict:
+def getRoomList(name: str, session_type: str, path: str) -> dict:
     if session_type == 'tmux':
         captured = runTmuxCmd(name, 'lsroom')
     else:
-        captured = runScreenCmd(name, 'lsroom')
+        captured = runScreenCmd(name, 'lsroom', path, pid)
     if captured and 'lsroom\n' in captured:
         room_text = captured.rsplit('lsroom\n', 1)[1]
     else:
@@ -418,22 +424,22 @@ def getPackList(path: str) -> dict:
         return pack_dict
 
 # 向指定服务器封禁玩家
-def banFromServer(server_name: str, player_name: str, session_type: str) -> bool:
+def banFromServer(server_name: str, player_name: str, session_type: str, path: str) -> bool:
     if session_type == 'tmux':
         captured = runTmuxCmd(server_name, f'ban {player_name}')
     else:
-        captured = runScreenCmd(server_name, f'ban {player_name}')
+        captured = runScreenCmd(server_name, f'ban {player_name}', path, pid)
     result_text = captured.rsplit('ban\n', 1)[1]
     if re.search(r'Running command:', result_text):
         return True
     return False
 
 # 向指定服务器发送消息
-def sendMsgTo(name: str, msg: str, session_type: str) -> bool:
+def sendMsgTo(name: str, msg: str, session_type: str, path: str) -> bool:
     if session_type == 'tmux':
         captured = runTmuxCmd(name, f'msg {msg}')
     else:
-        captured = runScreenCmd(name, f'msg {msg}')
+        captured = runScreenCmd(name, f'msg {msg}', path, pid)
     result_text = captured.rsplit('msg\n', 1)[1]
     if re.search(r'Banned', result_text):
         return True
@@ -465,14 +471,19 @@ def tailLogNum(file_path: str, num: int) -> str:
 def tailLog(conn: Connection, sid: str) -> None:
     try:
         date = time.strftime('%m/%d %H:%M:%S', time.localtime())
+        name = conn.clients[sid].get('name')
         path = ''
         handled = False
         server_list = getServerList()
         for server in server_list:
-            if conn.clients[sid].get('name') == server[0]:
+            if name == server[0]:
                 path = getProcPathByPid(server[1])
                 handled = isHandledByPid(server[1])
+        server_dict = getServerFromConfig()
         if path == '':
+            if name not in server_dict:
+                conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;31mE[0;0m] 服务器无效\n'})
+                return
             conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;33mI[0;0m] 服务器未启动，输入指令[0;33m start [0;0m启动服务器\n'})
         elif not handled:
             conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;33mW[0;0m] 服务器不是由本程序接管启动，只能进行其他操作，无法与终端交互，请关闭服务器后由本程序接管启动，再刷新本页面实现与终端交互\n'})
@@ -502,7 +513,7 @@ def tailLog(conn: Connection, sid: str) -> None:
                 else:
                     conn.socketio.emit('terminal', {'text': line})
     except Exception as e:
-        conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;31mI[0;0m] 读取日志异常: {e}\n'})
+        conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;31mE[0;0m] 读取日志异常: {e}\n'})
 
 # 根据文件名添加额外内容
 def appendFile(path: str, content: str) -> str | None:

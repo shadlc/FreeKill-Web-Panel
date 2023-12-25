@@ -1,5 +1,5 @@
-import { changeScheme, showDialog, showProcessingBox, showTextBox, showCodeEditBox, convertBashColor, timeToTimeStamp, formatTime, formatSize } from './utils.js';
-import { getLatestVersion, executeCmd, getDetailInfo, startServer, stopServer, updateServer, getServerConfig, setServerConfig, modifyServerPort } from './net.js'
+import { changeScheme, showDialog, showProcessingBox, showTextBox, showCodeEditBox, convertBashColor, formatTime, formatSize } from './utils.js';
+import { getLatestVersion, executeCmd, getDetailInfo, startServer, stopServer, updateServer, getServerConfig, setServerConfig, modifyServerPort, getPlayerListInfo, getRoomListInfo } from './net.js'
 
 // 主题相关
 const themeScheme = window.matchMedia('(prefers-color-scheme: light)');
@@ -23,6 +23,8 @@ let base_url_slash = base_url + '/';
 document.querySelector('#title a').innerText = server_name;
 
 let start_time = 0;
+let handled = false;
+let session_type = '';
 
 // 页面加载完毕后触发
 window.onload = function() {
@@ -38,6 +40,56 @@ window.onload = function() {
 
   document.querySelector('#server_motd').addEventListener('click', ()=>{
     showDialog(document.querySelector('#server_motd')?.innerHTML, '公告', undefined, true);
+  });
+
+  // 对玩家列表刷新按钮进行点击监听
+  let player_list_refresh_btn = document.querySelector('#player_list .list-title .btn');
+  player_list_refresh_btn.addEventListener('click', ()=>{
+    if(player_list_refresh_btn.style.cursor == 'not-allowed') {
+      return;
+    }
+    else if(!handled && session_type != 'tmux') {
+      showDialog('此服务器不是由本程序接管启动，且非tmux服，无法进此操作');
+      return;
+    }
+    player_list_refresh_btn.style.animation = 'rotate 1s';
+    player_list_refresh_btn.style.enabled = false;
+    player_list_refresh_btn.style.cursor = 'not-allowed';
+    setTimeout(()=>{player_list_refresh_btn.style.animation = '';}, 1200);
+    getPlayerListInfo(server_name, (data)=>{
+      if(data.retcode != 0) {
+        showDialog(data?.msg, '提示');
+        return;
+      }
+      let info = data.data;
+      refreshPlayerList(info);
+      player_list_refresh_btn.style.cursor = '';
+    }, base_url);
+  });
+
+  // 对房间列表刷新按钮进行点击监听
+  let room_list_refresh_btn = document.querySelector('#room_list .list-title .btn');
+  room_list_refresh_btn.addEventListener('click', ()=>{
+    if(room_list_refresh_btn.style.cursor == 'not-allowed') {
+      return;
+    }
+    else if(!handled && session_type != 'tmux') {
+      showDialog('此服务器不是由本程序接管启动，且非tmux服，无法进此操作');
+      return;
+    }
+    room_list_refresh_btn.style.animation = 'rotate 1s';
+    room_list_refresh_btn.style.enabled = false;
+    room_list_refresh_btn.style.cursor = 'not-allowed';
+    setTimeout(()=>{room_list_refresh_btn.style.animation = '';}, 1200);
+    getRoomListInfo(server_name, (data)=>{
+      if(data.retcode != 0) {
+        showDialog(data?.msg, '提示');
+        return;
+      }
+      let info = data.data;
+      refreshRoomList(info);
+      room_list_refresh_btn.style.cursor = '';
+    }, base_url);
   });
 
   setTimeout(()=>{
@@ -64,6 +116,8 @@ function refreshDetails() {
         e.style.display = 'inline-block';
       });
     }
+    handled = info.handled;
+    session_type = info.session_type;
     document.getElementById('server_name').innerHTML = info.name;
     document.getElementById('server_version').innerHTML = info.version;
     document.getElementById('server_desc').innerHTML = info.desc;
@@ -72,8 +126,6 @@ function refreshDetails() {
     document.getElementById('server_pid').innerHTML = info.pid;
     document.getElementById('server_enable_bots').innerHTML = info.enable_bots?'启用':'禁用';
     document.getElementById('server_temp_ban_time').innerHTML = info.temp_ban_time + '分钟';
-    refreshPlayerList(info.player_list);
-    refreshRoomList(info.room_list);
     refreshPackList(info.pack_list);
     if(info.uptime != 0) {
       start_time = Date.now() - info.uptime * 1000;
@@ -97,7 +149,7 @@ function refreshTime() {
 
 // 刷新玩家列表
 async function refreshPlayerList(player_list) {
-  let list_div = document.getElementById('player_list');
+  let list_div = document.querySelector('#player_list .list-content');
   list_div.innerHTML = '';
   for(let index in player_list) {
     let name = player_list[index]
@@ -113,7 +165,7 @@ async function refreshPlayerList(player_list) {
 
 // 刷新房间列表
 async function refreshRoomList(room_list) {
-  let list_div = document.getElementById('room_list');
+  let list_div = document.querySelector('#room_list .list-content');
   list_div.innerHTML = '';
   for(let index in room_list) {
     let name = room_list[index]
@@ -129,7 +181,7 @@ async function refreshRoomList(room_list) {
 
 // 刷新扩充包列表
 async function refreshPackList(pack_list) {
-  let list_div = document.getElementById('pack_list');
+  let list_div = document.querySelector('#pack_list .list-content');
   list_div.innerHTML = '';
   for(let code in pack_list) {
     let name = pack_list[code].name;
@@ -320,6 +372,11 @@ document.getElementById('stop_btn').addEventListener('click', ()=>{
   showDialog('你真的要停止服务器<'+server_name+'>吗？', '警告',
   ()=>{
     stopServer(server_name, (data)=>{
+      if(data?.retcode == 0 && !handled) {
+        showDialog('此服务器不是由本程序接管启动，因此停止后已无法操作\n点击确认返回主页，请手动刷新', '提示', ()=>{
+          window.history.back();
+        });
+      }
       showDialog(data?.msg);
       refreshDetails();
     }, base_url_slash);
@@ -336,7 +393,7 @@ document.getElementById('restart_btn').addEventListener('click', ()=>{
       (pre, final_callback)=>{
         stopServer(server_name, (data)=>{
           if(data?.retcode == 0 || data.code == 405) {
-            pre.innerHTML += '\n服务器停止成功';
+            pre.innerHTML += '\n'+data?.msg;
             startServer(server_name, (data)=>{
               if(data?.retcode == 0) {
                 pre.innerHTML += '\n服务器重启成功';

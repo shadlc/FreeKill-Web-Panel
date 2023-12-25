@@ -19,10 +19,11 @@ class Controller:
         for server_name in self.server_dict:
             server_port = self.server_dict[server_name][0]
             server_path = self.server_dict[server_name][1]
+            session_type = self.server_dict[server_name][2]
 
             if server_name not in [server.name for server in self.list]:
                 server = Server()
-                server.init(server_name, server_port, path=server_path)
+                server.init(server_name, server_port, path=server_path, session_type=session_type)
                 self.list.append(server)
 
     def refreshRunning(self) -> None:
@@ -60,7 +61,7 @@ class Controller:
 
     def add(self, server: Server) -> None:
         self.list.append(server)
-        self.server_dict[server.name] = [server.port, server.path]
+        self.server_dict[server.name] = [server.port, server.path, server.session_type]
         saveServerToConfig(self.server_dict)
 
     def remove(self, server: Server) -> None:

@@ -27,7 +27,7 @@ class Server:
         self.room_dict = {}
         self.pack_dict = {}
         self.handled = False
-        self.session_type = 'screen'
+        self.session_type = ''
 
     def init(self, name:str, port: int, pid: int = 0, path: str = '', session_type = '') -> None:
         if name == '' or port == '':
@@ -50,7 +50,8 @@ class Server:
             self.status = '版本读取异常'
 
     def start(self) -> str | None:
-        if pid := startGameServer(self.name, self.port, self.path, self.session_type):
+        session_type = self.session_type if self.session_type else 'tmux'
+        if pid := startGameServer(self.name, self.port, self.path, session_type):
             self.pid = pid
             return
         return '服务器启动失败，该端口可能已被占用'
@@ -72,7 +73,7 @@ class Server:
             if info:
                 [self.version,
                  self.icon_url,
-                 self.motd,
+                 self.desc,
                  self.capacity,
                  self.players,
                  self.ip] = info
@@ -94,9 +95,7 @@ class Server:
     def details(self, server_list: list) -> dict:
         self.readConfig()
         self.readPacks()
-        if isPortBusy(self.port):
-            self.readRooms()
-            self.handled = isHandledByPid(self.pid)
+        self.handled = isHandledByPid(self.pid)
         info_dict = self.info(server_list)
         info_dict = {
             **info_dict,
@@ -112,6 +111,20 @@ class Server:
             'handled': self.handled,
         }
         return info_dict
+    
+    def getPlayerList(self) -> dict:
+        if isPortBusy(self.port):
+            self.readPlayers()
+        else:
+            self.player_dict = {}
+        return self.player_dict
+    
+    def getRoomList(self) -> dict:
+        if isPortBusy(self.port):
+            self.readRooms()
+        else:
+            self.room_dict = {}
+        return self.room_dict
 
     def readConfig(self) -> bool:
         try:
@@ -131,11 +144,11 @@ class Server:
             return False
 
     def readPlayers(self) -> None:
-        self.player_dict = getPlayerList(self.name, self.session_type)
+        self.player_dict = getPlayerList(self.name, self.session_type, self.path)
         self.players = len(self.player_dict)
 
     def readRooms(self) -> None:
-        self.room_dict = getRoomList(self.name, self.session_type)
+        self.room_dict = getRoomList(self.name, self.session_type, self.path)
 
     def readPacks(self) -> None:
         self.pack_dict = getPackList(self.path)
