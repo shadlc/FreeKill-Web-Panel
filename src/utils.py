@@ -41,8 +41,9 @@ def getImgBase64FromURL(url: str) -> str:
 # 取得FreeKill最新版本
 def getFKVersion() -> str | None:
     try:
-        url = 'https://github.com/Qsgs-Fans/FreeKill/releases/latest'
-        response = requests.get(url)
+        # url = 'https://github.com/Qsgs-Fans/FreeKill/releases/latest'
+        url = 'https://gitee.com/notify-ctrl/FreeKill/releases/latest'
+        response = requests.get(url, timeout=5)
         if response.status_code == 200:
             version = response.url.split('/').pop()
             return version
