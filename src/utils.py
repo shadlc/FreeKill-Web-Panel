@@ -75,7 +75,7 @@ def runCmd(cmd: str, log=True) -> str:
         stdout, stderr = comm.communicate()
         etime = time.time()
         if log:
-            logging.debug(f' >>> 耗时({"{:.3f}".format(etime - stime)})执行指令 {cmd}')
+            logging.debug(f' >>> 耗时({round(etime - stime, 3)})执行指令 {cmd}')
         if stderr:
             logging.info(f' >>> 执行上述指令出错：{stderr}')
         if stdout:
@@ -87,20 +87,17 @@ def runCmd(cmd: str, log=True) -> str:
         return ''
 
 # 运行Bash指令并判断是否成功
-def runCmdCorrect(cmd: str, log=True) -> str:
+def runCmdCorrect(cmd: str, log=True) -> bool:
     stime = time.time()
     try:
-        subprocess.run(cmd)
+        subprocess.run(f'{cmd}', shell=True)
+        etime = time.time()
+        if log:
+            logging.debug(f' >>> 耗时({round(etime - stime, 3)})执行指令 {cmd}')
         return True
     except Exception as e:
+        logging.debug(f'执行外部指令不成功：{e}')
         return False
-    if log:
-        logging.debug(f' >>> 耗时({"{:.3f}".format(etime - stime)})执行指令 {cmd}')
-
-if hasTmux == None:
-    hasTmux = runCmdCorrect('tmux -V')
-if hasScreen == None:
-    hasScreen = runCmdCorrect('screen -v')
 
 # 从指定PID进程获取其运行时长
 def getProcessUptime(pid: int) -> str:
@@ -114,8 +111,13 @@ def getProcessUptime(pid: int) -> str:
 
 # 获取正在运行的FreeKill服务器列表以及其信息
 def getServerList() -> list[str]:
+    global hasTmux, hasScreen
     spid_dict = {}
     # 获取tmux列表
+    if hasTmux == None:
+        hasTmux = runCmdCorrect('tmux -V 2>&1>/dev/null')
+    if hasScreen == None:
+        hasScreen = runCmdCorrect('screen -v 2>&1>/dev/null')
     if hasTmux:
         command = ''' tmux ls -F "#{pane_pid} #{session_name}" 2>/dev/null '''
         spid_name = runCmd(command)
