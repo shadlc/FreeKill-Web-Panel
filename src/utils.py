@@ -90,10 +90,12 @@ def runCmd(cmd: str, log=True) -> str:
 def runCmdCorrect(cmd: str, log=True) -> bool:
     stime = time.time()
     try:
-        subprocess.run(f'{cmd}', shell=True)
+        result = subprocess.run(f'{cmd}', shell=True, capture_output=True, text=True)
         etime = time.time()
         if log:
             logging.debug(f' >>> 耗时({round(etime - stime, 3)})执行指令 {cmd}')
+        if result.returncode != 0:
+            raise EOFError(result.stderr)
         return True
     except Exception as e:
         logging.debug(f'执行外部指令不成功：{e}')
@@ -115,9 +117,9 @@ def getServerList() -> list[str]:
     spid_dict = {}
     # 获取tmux列表
     if hasTmux == None:
-        hasTmux = runCmdCorrect('tmux -V 2>&1>/dev/null')
+        hasTmux = runCmdCorrect('tmux -V')
     if hasScreen == None:
-        hasScreen = runCmdCorrect('screen -v 2>&1>/dev/null')
+        hasScreen = runCmdCorrect('screen -v')
     if hasTmux:
         command = ''' tmux ls -F "#{pane_pid} #{session_name}" 2>/dev/null '''
         spid_name = runCmd(command)
