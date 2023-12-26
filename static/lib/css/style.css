@@ -320,7 +320,6 @@ footer {
 }
 #title {
     margin: 0 auto;
-    user-select: none;
 }
 #color_scheme {
     position: absolute;
@@ -737,6 +736,7 @@ footer {
     position: absolute;
     top: 0;
     font-weight: bold;
+    user-select: none;
 }
 
 @media (max-width: 800px) {

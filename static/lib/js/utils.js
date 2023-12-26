@@ -201,11 +201,11 @@ export function addSecondsToTime(time, add_seconds) {
   const updated_minutes = Math.floor(updated_total_seconds % (60*60) / 60).toString().padStart(2, '0');
   const updated_seconds = Math.floor(updated_total_seconds % 60).toString().padStart(2, '0');
 
-  if(days) {
+  if(updated_days != '00') {
     return `${updated_days}日${updated_hours}时${updated_minutes}分${updated_seconds}秒`;
-  } else if(hours) {
+  } else if(updated_hours != '00') {
     return `${updated_hours}时${updated_minutes}分${updated_seconds}秒`;
-  } else if(minutes) {
+  } else if(updated_minutes != '00') {
     return `${updated_minutes}分${updated_seconds}秒`;
   } else {
     return `${updated_seconds}秒`;

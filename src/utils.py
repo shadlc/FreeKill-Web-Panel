@@ -230,7 +230,7 @@ def saveServerToConfig(server_dict: list[str]) -> str:
     try:
         json_data = json.load(open(config_file))
         json_data['server_dict'] = server_dict
-        json.dump(json_data, open(config_file, 'w'), ensure_ascii=False)
+        json.dump(json_data, open(config_file, 'w'), ensure_ascii=False, indent=2)
     except Exception as e:
         return f'保存配置文件发生错误\n {e}'
     return ''
@@ -251,6 +251,7 @@ def startGameServer(name: str, port: int, path: str, session_type: str) -> int:
     if session_type == 'tmux':
         command = f''' cd {path}; tmux new -d -s "{name}" "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
     else:
+        name = name.split(".", 1).pop()
         command = f''' cd {path}; screen -dmS "{name}" bash -c "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
     logging.debug(f' >>> 独立进程   执行指令 {command}')
     subprocess.Popen([command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).wait()

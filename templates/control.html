@@ -16,7 +16,7 @@
         <div id="header">
             <span id="back_btn" class="btn btn-shadow"><i class="bi">&#xF12F;</i></span>
             <span id="refresh_btn" class="btn btn-shadow" ><i class="bi">&#xF116;</i></span>
-            <h1 id="title"><img id="server_icon" /><a href="javascript:history.back();"></a></h1>
+            <h1 id="title"><img id="server_icon" /></h1>
             <div id="color_scheme"></div>
         </div>
     </div>
@@ -143,7 +143,7 @@
           }
         });
         document.getElementById("back_btn").addEventListener("click", ()=>{
-          window.history.back();
+          window.location.href = window.location.href.split('control/')[0];
         });
     </script>
 </html>

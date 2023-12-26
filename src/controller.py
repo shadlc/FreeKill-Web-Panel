@@ -60,6 +60,8 @@ class Controller:
 
     def add(self, server: Server) -> None:
         self.list.append(server)
+        for server_name in [i for i in self.server_dict if self.server_dict[i][0] == server.port]:
+            self.server_dict.pop(server_name)
         self.server_dict[server.name] = [server.port, server.path, server.session_type]
         saveServerToConfig(self.server_dict)
 

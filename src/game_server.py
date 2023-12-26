@@ -1,6 +1,6 @@
 import json
 
-from src.utils import getProcessUptime, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, startGameServer, isHandledByPid, getServerInfo, getPlayerList, getRoomList, getPackList
+from src.utils import getProcessUptime, getSessionPid, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, startGameServer, isHandledByPid, getServerInfo, getPlayerList, getRoomList, getPackList
 
 
 class Server:
@@ -53,6 +53,8 @@ class Server:
         session_type = self.session_type if self.session_type else 'tmux'
         if pid := startGameServer(self.name, self.port, self.path, session_type):
             self.pid = pid
+            if self.session_type == 'screen':
+                self.name = f'{getSessionPid(self.pid)}.{self.name.split(".", 1).pop()}'
             return
         return '服务器启动失败，该端口可能已被占用'
 

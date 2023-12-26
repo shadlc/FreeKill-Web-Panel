@@ -15,12 +15,12 @@ const evt = new Event('change', { bubbles: true, cancelable: true });
 themeScheme.dispatchEvent(evt);
 
 // 获取当前服务器名URL
-const server_name = decodeURIComponent(window.location.pathname.split('/').pop());
+let server_name = decodeURIComponent(window.location.pathname.split('/').pop());
 let base_url = window.location.href.replace('/control/', '/');
 base_url = base_url.substring(0, base_url.lastIndexOf('/'));
 let base_url_slash = base_url + '/';
 
-document.querySelector('#title a').innerText = server_name;
+document.querySelector('#title').innerText = server_name;
 
 let start_time = 0;
 let handled = false;
@@ -282,7 +282,7 @@ socket.on('terminal', function(data) {
   } else {
     screen.innerHTML += convertBashColor(data.text);
   }
-  if(data.start) {
+  if(data.start && session_type != 'screen') {
     setTimeout(() => {
       refreshDetails();
     }, 1000);
@@ -323,6 +323,10 @@ terminal_input.addEventListener('keydown', function(e) {
     terminal_input.value = history[currentIndex] || '';
   } else if (e.key === 'Enter') {
     const currentValue = terminal_input.value.trim();
+    if(currentValue == 'start' && session_type == 'screen' && document.getElementById('server_time').innerHTML == '已停止') {
+      showDialog('screen服务器暂不支持指令启动');
+      return;
+    }
     if (currentValue !== '') {
       if(history.length >= 100) {
         history.shift();
@@ -335,7 +339,7 @@ terminal_input.addEventListener('keydown', function(e) {
         terminal_input.value,
         (data)=>{
           if(data.retcode != 0) {
-            showDialog(data?.msg, '提示');
+            showDialog(data?.msg);
           }
           terminal_input.value = '';
         }, base_url
@@ -362,8 +366,15 @@ document.querySelectorAll('.terminal-btn').forEach((e)=>{
 // 启动服务器按钮
 document.getElementById('start_btn').addEventListener('click', ()=>{
   startServer(server_name, (data)=>{
-    showDialog(data?.msg);
-    refreshDetails();
+    if(data?.data?.redirect) {
+      showDialog('服务器启动成功\n由于本服务器是screen启动，服务器名称已发生变动\n将在三秒后跳转至新页面');
+      setTimeout(() => {
+        window.location.href = base_url_slash + 'control/' + data.data.name;
+      }, 3000);
+    } else {
+      showDialog(data?.msg);
+      refreshDetails();
+    }
   }, base_url_slash);
 });
 
@@ -397,6 +408,13 @@ document.getElementById('restart_btn').addEventListener('click', ()=>{
             startServer(server_name, (data)=>{
               if(data?.retcode == 0) {
                 pre.innerHTML += '\n服务器重启成功';
+                if(data?.data?.redirect) {
+                  showDialog('服务器启动成功\n由于本服务器是screen启动，服务器名称已发生变动\n将在三秒后跳转至新页面');
+                  setTimeout(() => {
+                    window.location.href = base_url_slash + 'control/' + data.data.name;
+                  }, 3000);
+                  return;
+                }
               } else {
                 pre.innerHTML += '\n服务器重启失败';
               }

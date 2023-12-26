@@ -5,7 +5,7 @@ import time
 from flask import Response
 from flask_classful import FlaskView, route, request
 
-from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect
+from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect, getSessionPid
 from src.game_server import Server
 from src.controller import Controller
 
@@ -143,7 +143,11 @@ class V1API(FlaskView):
         if pid == 0:
             return restful(400, '服务器启动失败，请联系管理员')
         server = Server()
-        server.init(f'{pid}.{name}', port, path=path, session_type=session_type)
+        if session_type == 'tmux':
+            server.init(name, port, path=path, session_type=session_type)
+        else:
+            spid = getSessionPid(pid)
+            server.init(f'{spid}.{name}', port, path=path, session_type=session_type)
         self.controller.add(server)
         return restful(200, f'服务器已添加并启动')
 
@@ -160,9 +164,15 @@ class V1API(FlaskView):
                 error = server.start()
                 if error:
                     return restful(400, error)
+                if server.session_type == 'screen':
+                    self.controller.remove(server)
+                    self.controller.add(server)
+                    data = {'redirect': True, 'name': server.name}
+                else:
+                    data = {}
                 self.controller.connection.set(server.name, 'path', server.path)
                 self.controller.connection.set(server.name, 'pid', server.pid)
-                return restful(200, '服务器启动成功')
+                return restful(200, '服务器启动成功', data)
 
         return restful(404, '无法找到该服务器')
 
