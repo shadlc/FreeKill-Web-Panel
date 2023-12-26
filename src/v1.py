@@ -125,9 +125,9 @@ class V1API(FlaskView):
             return restful(409, f'该路径已经启动了一个服务器')
         elif session_type not in ['tmux', 'screen']:
             return restful(409, f'本程序仅支持启动tmux或screen服')
-        elif session_type == 'tmux' and not runCmdCorrect('tmux -V 2>&1>/dev/null'):
+        elif session_type == 'tmux' and not runCmdCorrect('tmux -V'):
             return restful(409, f'服务器未安装tmux，无法以此方式启动')
-        elif session_type == 'screen' and not runCmdCorrect('screen -v 2>&1>/dev/null'):
+        elif session_type == 'screen' and not runCmdCorrect('screen -v'):
             return restful(409, f'服务器未安装screen，无法以此方式启动')
 
         if e := writeGameConfig(path, {
