@@ -137,7 +137,7 @@ def getServerList() -> list[str]:
         for process in psutil.process_iter():
             cmd = process.cmdline()
             if './FreeKill' in cmd and '-s' in cmd and 'SCREEN' not in cmd:
-                port = int(cmd[2]) if len(cmd) > 2 and cmd[2].isdigit() else ''
+                port = int(cmd[2]) if len(cmd) > 2 and cmd[2].isdigit() else 9527
                 spid_pid_port_list.append([getSessionPid(process.ppid()), process.pid, port])
     except psutil.NoSuchProcess:...
 

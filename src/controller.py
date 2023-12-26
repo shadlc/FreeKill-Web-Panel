@@ -29,9 +29,9 @@ class Controller:
         self.server_list = getServerList()
         del_server_list = []
         for server_info in self.server_list:
-            server_name = server_info[0] if len(server_info) else ''
-            server_pid = int(server_info[1]) if len(server_info) >1 else 0
-            server_port = int(server_info[2]) if len(server_info) >2 else 9527
+            server_name = server_info[0]
+            server_pid = server_info[1]
+            server_port = server_info[2]
             server_type = server_info[3]
 
             if server_name and server_name not in [server.name for server in self.list]:
