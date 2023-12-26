@@ -367,7 +367,7 @@ document.querySelectorAll('.terminal-btn').forEach((e)=>{
 document.getElementById('start_btn').addEventListener('click', ()=>{
   startServer(server_name, (data)=>{
     if(data?.data?.redirect) {
-      showDialog('服务器启动成功\n由于本服务器是screen启动，服务器名称已发生变动\n将在三秒后跳转至新页面');
+      showDialog('服务器启动成功，由于本服务器是screen启动，服务器名称已发生变动，将在三秒后跳转至新页面');
       setTimeout(() => {
         window.location.href = base_url_slash + 'control/' + data.data.name;
       }, 3000);
@@ -380,12 +380,16 @@ document.getElementById('start_btn').addEventListener('click', ()=>{
 
 // 停止服务器按钮
 document.getElementById('stop_btn').addEventListener('click', ()=>{
-  showDialog('你真的要停止服务器<'+server_name+'>吗？', '警告',
+  let msg = '你真的要停止服务器<'+server_name+'>吗？'
+  if(!handled) {
+    msg += '由于本服务器非本程序接管启动，此操作会关闭整个session，是否继续？'
+  }
+  showDialog(msg, '警告',
   ()=>{
     stopServer(server_name, (data)=>{
       if(data?.retcode == 0 && !handled) {
-        showDialog('此服务器不是由本程序接管启动，因此停止后已无法操作\n点击确认返回主页，请手动刷新', '提示', ()=>{
-          window.history.back();
+        showDialog('此服务器不是由本程序接管启动，因此停止后已无法操作，点击确认返回主页，请手动刷新', '提示', ()=>{
+          window.location.href = base_url;
         });
       }
       showDialog(data?.msg);
@@ -396,6 +400,10 @@ document.getElementById('stop_btn').addEventListener('click', ()=>{
 
 // 重启服务器按钮
 document.getElementById('restart_btn').addEventListener('click', ()=>{
+  if(!handled) {
+    showDialog('非本程序接管启动的服务器无法使用此功能');
+    return;
+  }
   showDialog('你真的要重启服务器<'+server_name+'>吗？', '警告',
   ()=>{
     showProcessingBox(
