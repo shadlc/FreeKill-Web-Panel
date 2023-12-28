@@ -1,6 +1,6 @@
 # FreeKill-Web-Panel (FKWP)
 
-### A web control panel for server side [FreeKill](https://github.com/Qsgs-Fans/FreeKill/), depends on [Flask](https://github.com/pallets/flask) and [tmux](https://github.com/tmux/tmux)
+### A web control panel for server side [FreeKill](https://github.com/Qsgs-Fans/FreeKill/), depends on [Flask](https://github.com/pallets/flask)
 
 ![GitHub Pipenv locked Python version](https://img.shields.io/github/pipenv/locked/python-version/shadlc/FreeKill-Web-Panel)
 ![Scc Count Badge](https://sloc.xyz/github/shadlc/FreeKill-Web-Panel)
