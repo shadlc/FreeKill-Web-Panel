@@ -5,9 +5,10 @@ import time
 from flask import Response
 from flask_classful import FlaskView, route, request
 
-from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect, getSessionPid
+from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, backupServer, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect, getSessionPid
 from src.game_server import Server
 from src.controller import Controller
+from src.utils import config
 
 class V1API(FlaskView):
     
@@ -30,7 +31,8 @@ class V1API(FlaskView):
     @route('details', methods=['POST'])
     def details(self):
         name = request.json.get('name', '')
-        for server in self.controller.list:
+        server_list = self.controller.getList()
+        for server in server_list:
             if server.name == name:
                 info_dict = server.details(self.controller.server_list)
                 return restful(200, '', info_dict)
@@ -65,7 +67,7 @@ class V1API(FlaskView):
             if server.name == name:
                 is_port_busy = isPortBusy(server.port)
                 if cmd == 'start' and not is_port_busy:
-                    appendFile(f'{server.path}/fk-latest.log', '\x01')
+                    appendFile(f'{server.path}/{config.log_file}', '\x01')
                     time.sleep(0.1)
                     error = server.start()
                     if error:
@@ -159,7 +161,7 @@ class V1API(FlaskView):
             if server.name == server_name:
                 if isPortBusy(server.port):
                     return restful(405, '服务器已经在运行中')
-                appendFile(f'{server.path}/fk-latest.log', '\x01')
+                appendFile(f'{server.path}/{config.log_file}', '\x01')
                 time.sleep(0.1)
                 error = server.start()
                 if error:
@@ -266,6 +268,19 @@ class V1API(FlaskView):
                     return restful(200, f'服务器<{server_name}>端口号修改成功')
                 else:
                     return restful(405, '该值无效')
+
+        return restful(404, '无法找到该服务器')
+
+    @route('backup', methods=['POST'])
+    def backup(self):
+        server_name = request.json.get('name', '')
+        for server in self.controller.getList():
+            if server.name == server_name:
+                result, msg = backupServer(server.path)
+                if result:
+                    return restful(200, f'服务器<{server_name}>备份成功\n{msg}')
+                else:
+                    return restful(200, f'服务器<{server_name}>备份失败，原因：{msg}')
 
         return restful(404, '无法找到该服务器')
 

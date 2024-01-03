@@ -2,7 +2,7 @@ from platform import system
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
 
-from src.utils import tailLog, queryPerf
+from src.utils import tailLog, queryPerf, config
 from src.v1 import V1API
 from src.controller import Controller
 from src.connection import Connection
@@ -37,8 +37,9 @@ def disconnect():
 
 if __name__ == '__main__':
     if system() not in ['Linux']:
-        print('不支持该平台')
+        print('[FKWP] 不支持该平台')
     else:
         V1API.register(app, route_base='/v1')
         V1API.controller = controller
-        socketio.run(app, '127.0.0.1', 9500, debug=True)
+        print(f'[FKWP] 服务器在{config.host}:{config.port}启动')
+        socketio.run(app, config.host, config.port, debug=True)

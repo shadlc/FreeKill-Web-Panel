@@ -21,7 +21,7 @@ class Server:
 
         self.players = 0
         self.status = '初始化'
-        self.version = 'v0.0.1'
+        self.version = 'v0.0.0'
 
         self.player_dict = {}
         self.room_dict = {}
@@ -42,12 +42,9 @@ class Server:
             self.path = path
         if not self.readConfig():
             return
-        try:
-            if not self.pid or getProcessUptime(self.pid) == '0':
-                self.status = '未运行'
-            self.version = getVersionFromPath(self.path)
-        except:
-            self.status = '版本读取异常'
+        if not self.pid or getProcessUptime(self.pid) == '0':
+            self.status = '未运行'
+        self.version = getVersionFromPath(self.path)
 
     def start(self) -> str | None:
         session_type = self.session_type if self.session_type else 'tmux'

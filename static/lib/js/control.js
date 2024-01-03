@@ -1,5 +1,5 @@
 import { changeScheme, showDialog, showProcessingBox, showTextBox, showCodeEditBox, convertBashColor, formatTime, formatSize } from './utils.js';
-import { getLatestVersion, executeCmd, getDetailInfo, startServer, stopServer, updateServer, getServerConfig, setServerConfig, modifyServerPort, getPlayerListInfo, getRoomListInfo } from './net.js'
+import { getLatestVersion, executeCmd, getDetailInfo, startServer, stopServer, updateServer, getServerConfig, setServerConfig, modifyServerPort, getPlayerListInfo, getRoomListInfo, backupServer } from './net.js'
 
 // 主题相关
 const themeScheme = window.matchMedia('(prefers-color-scheme: light)');
@@ -64,7 +64,7 @@ window.onload = function() {
       let info = data.data;
       refreshPlayerList(info);
       player_list_refresh_btn.style.cursor = '';
-    }, base_url);
+    }, base_url_slash);
   });
 
   // 对房间列表刷新按钮进行点击监听
@@ -89,7 +89,7 @@ window.onload = function() {
       let info = data.data;
       refreshRoomList(info);
       room_list_refresh_btn.style.cursor = '';
-    }, base_url);
+    }, base_url_slash);
   });
 
   setTimeout(()=>{
@@ -98,7 +98,7 @@ window.onload = function() {
         showDialog(data?.msg, '提示');
       }
       document.getElementById('latest_version').innerHTML = data.data.version;
-    }, base_url);
+    }, base_url_slash);
   }, 1000);
 };
 
@@ -132,14 +132,14 @@ function refreshDetails() {
     } else {
       start_time = 0;
     }
-    refreshTime();
-  }, base_url);
+    refreshTime(info.status);
+  }, base_url_slash);
 }
 
 // 刷新服务器运行时长
-function refreshTime() {
+function refreshTime(status) {
   if(start_time == 0) {
-    document.getElementById('server_time').innerHTML = '已停止';
+    if(status) document.getElementById('server_time').innerHTML = status;
   } else {
     let uptime = Date.now() - start_time;
     let string_time = formatTime(uptime);
@@ -342,7 +342,7 @@ terminal_input.addEventListener('keydown', function(e) {
             showDialog(data?.msg);
           }
           terminal_input.value = '';
-        }, base_url
+        }, base_url_slash
       );
     }
     terminal_input.value = '';
@@ -389,7 +389,7 @@ document.getElementById('stop_btn').addEventListener('click', ()=>{
     stopServer(server_name, (data)=>{
       if(data?.retcode == 0 && !handled) {
         showDialog('此服务器不是由本程序接管启动，因此停止后已无法操作，点击确认返回主页，请手动刷新', '提示', ()=>{
-          window.location.href = base_url;
+          window.location.href = base_url_slash;
         });
       }
       showDialog(data?.msg);
@@ -412,7 +412,7 @@ document.getElementById('restart_btn').addEventListener('click', ()=>{
       (pre, final_callback)=>{
         stopServer(server_name, (data)=>{
           if(data?.retcode == 0 || data.code == 405) {
-            pre.innerHTML += '\n'+data?.msg;
+            pre.innerHTML += '\n' + data?.msg;
             startServer(server_name, (data)=>{
               if(data?.retcode == 0) {
                 pre.innerHTML += '\n服务器重启成功';
@@ -444,7 +444,7 @@ document.getElementById('update_btn').addEventListener('click', ()=>{
   const server_version = document.getElementById('server_version').innerHTML;
   const latest_version = document.getElementById('latest_version').innerHTML;
   if(server_version != latest_version) {
-    updateServer(server_name, base_url);
+    updateServer(server_name, base_url_slash);
   } else {
     showDialog('服务器已经是最新版本，是否强制更新？', '提示', ()=>{
       updateServer(server_name, ()=>{
@@ -452,6 +452,34 @@ document.getElementById('update_btn').addEventListener('click', ()=>{
       }, base_url_slash);
     });
   }
+});
+
+// 备份服务器按钮
+document.getElementById('backup_btn').addEventListener('click', ()=>{
+  showDialog('你真的要对服务器<'+server_name+'>进行备份吗？', '警告',
+  ()=>{
+    showProcessingBox(
+      '备份服务器中...',
+      '提示',
+      (pre, final_callback)=>{
+        backupServer(server_name, (data)=>{
+          if(data?.retcode == 0) {
+            pre.innerHTML += '\n' + data?.msg;
+            final_callback(true);
+          } else {
+            final_callback(false);
+            showDialog(data?.msg);
+          }
+        }, base_url_slash);
+      }
+    );
+  });
+});
+
+// 获取服务器统计信息按钮
+document.getElementById('statistics_btn').addEventListener('click', ()=>{
+  // TODO
+  showDialog('未实现');
 });
 
 // 修改服务器端口按钮

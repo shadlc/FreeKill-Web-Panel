@@ -8,13 +8,13 @@ import psutil
 import socket
 import logging
 import sqlite3
+import zipfile
 import requests
 import subprocess
 
 from flask import jsonify
 from src.connection import Connection
-
-config_file = f'./config.json'
+from src.config import Config
 
 logging.getLogger().name = 'utils'
 if '--debug' in sys.argv[1:]:
@@ -22,6 +22,7 @@ if '--debug' in sys.argv[1:]:
 else:
     logging.basicConfig(level=logging.INFO)
 
+config = Config()
 hasTmux = None
 hasScreen = None
 
@@ -41,8 +42,7 @@ def getImgBase64FromURL(url: str) -> str:
 # 取得FreeKill最新版本
 def getFKVersion() -> str | None:
     try:
-        # url = 'https://github.com/Qsgs-Fans/FreeKill/releases/latest'
-        url = 'https://gitee.com/notify-ctrl/FreeKill/releases/latest'
+        url = config.version_check_url
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             version = response.url.split('/').pop()
@@ -66,7 +66,7 @@ def getVersionFromPath(path: str) -> str:
             return f'v{version}'
     except Exception as e:
         logging.error(e)
-    return ''
+    return '版本读取异常'
 
 # 运行Bash指令并获取结果
 def runCmd(cmd: str, log=True) -> str:
@@ -181,7 +181,7 @@ def isHandledByPid(pid: int) -> bool:
         for process in psutil.process_iter():
             if pid == process.pid:
                 cmd = process.cmdline()
-                if 'tee ./fk-latest.log' in ' '.join(cmd):
+                if f'tee ./{config.log_file}' in ' '.join(cmd):
                     return True
                 else:
                     return isHandledByPid(process.ppid())
@@ -221,20 +221,12 @@ def isFileExists(path: str) -> bool:
 
 # 获取保存的历史服务器列表
 def getServerFromConfig() -> dict:
-    if not isFileExists(config_file):
-        json.dump({'server_dict': {}}, open(config_file, 'w'), ensure_ascii=False)
-    json_data = json.load(open(config_file)).get('server_dict')
-    return json_data
+    return config.read('server_dict')
 
 # 保存历史服务器列表
 def saveServerToConfig(server_dict: list[str]) -> str:
-    try:
-        json_data = json.load(open(config_file))
-        json_data['server_dict'] = server_dict
-        json.dump(json_data, open(config_file, 'w'), ensure_ascii=False, indent=2)
-    except Exception as e:
-        return f'保存配置文件发生错误\n {e}'
-    return ''
+    config.server_dict = server_dict
+    return config.save('server_dict', server_dict)
 
 # 以RESTful的方式进行返回响应
 def restful(code: int, msg: str = '', data: dict = {}) -> None:
@@ -250,10 +242,10 @@ def restful(code: int, msg: str = '', data: dict = {}) -> None:
 # 启动服务器,返回PID
 def startGameServer(name: str, port: int, path: str, session_type: str) -> int:
     if session_type == 'tmux':
-        command = f''' cd {path}; tmux new -d -s "{name}" "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
+        command = f''' cd {path}; tmux new -d -s "{name}" "./FreeKill -s {port} 2>&1 | tee ./{config.log_file}" '''
     else:
         name = name.split(".", 1).pop()
-        command = f''' cd {path}; screen -dmS "{name}" bash -c "./FreeKill -s {port} 2>&1 | tee ./fk-latest.log" '''
+        command = f''' cd {path}; screen -dmS "{name}" bash -c "./FreeKill -s {port} 2>&1 | tee ./{config.log_file}" '''
     logging.debug(f' >>> 独立进程   执行指令 {command}')
     subprocess.Popen([command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).wait()
     time.sleep(0.5)
@@ -324,6 +316,30 @@ def updateGameServer(server_name: str) -> str:
             else:
                 yield f'event: message\ndata: <span class="red">服务器更新失败，错误码：{process.poll()}</span><br>\n\n'
             return
+
+# 备份服务器
+def backupServer(server_path: str) -> [bool, str]:
+    try:
+        backup_dir = config.backup_directory
+        ignore_list: list = [backup_dir] + config.backup_ignore
+        ignore_list = [os.path.join(server_path, i) for i in ignore_list]
+        backup_dir_path = os.path.join(server_path, backup_dir)
+        os.makedirs(backup_dir_path, exist_ok=True)
+        backup_zip = os.path.join(backup_dir_path, f'backup-{time.strftime("%Y%m%d-%H-%M-%S", time.localtime())}.zip')
+        with zipfile.ZipFile(backup_zip, 'w', zipfile.ZIP_DEFLATED) as zip:
+            for root, dirs, files in os.walk(server_path):
+                if len([i for i in ignore_list if i in root]):
+                    print(root, dirs, files)
+                    continue
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    zip.write(file_path, os.path.relpath(file_path, server_path))
+        backup_size = os.path.getsize(backup_zip) / (1024 * 1024)
+        return True, f'备份包路径：[{backup_zip}]\n备份包大小[{round(backup_size, 2)}MB]'
+    except Exception as e:
+        raise e
+        return False, str(e)
+
 # 读取游戏配置文件
 def readGameConfig(path: str) -> [bool, str]:
     try:
@@ -331,7 +347,7 @@ def readGameConfig(path: str) -> [bool, str]:
             config_text = f.read()
         return True, config_text
     except Exception as e:
-        return False, e
+        return False, str(e)
 
 # 写入游戏配置文件
 def writeGameConfig(path: str, config: dict | str) -> str | None:
@@ -353,7 +369,7 @@ def runScreenCmd(name: str, cmd: str, path: str='') -> str:
     command = command = f' screen -S {name} -X stuff "{cmd}\n" '
     if not path:
         return runCmd(command)
-    log_file = f'{path}/fk-latest.log'
+    log_file = os.path.join(path, config.log_file)
     with open(log_file) as f:
         f.seek(0, 2)
         runCmd(command)
@@ -424,10 +440,7 @@ def getRoomList(name: str, session_type: str, path: str) -> dict:
 # 获取指定服务器扩充包
 def getPackList(path: str) -> dict:
     pack_dict = getPackListFromDir(os.path.join(path, 'packages'))
-    trans_dict = {
-        'mobile_effect': '手杀特效',
-        'utility': '常用函数',
-    }
+    trans_dict = config.extra_trans
     try:
         db_file = os.path.join(path, 'packages/packages.db')
         logging.debug(f'读取数据库 {db_file}')
@@ -524,7 +537,7 @@ def tailLog(conn: Connection, sid: str) -> None:
         if temp_path := conn.clients[sid].get('path'):
             path = temp_path
 
-        log_file = f'{path}/fk-latest.log'
+        log_file = os.path.join(path, config.log_file)
         conn.socketio.emit('terminal', {'text': tailLogNum(log_file, 1000), 'history': True})
         with open(log_file) as f:
             f.seek(0, 2)

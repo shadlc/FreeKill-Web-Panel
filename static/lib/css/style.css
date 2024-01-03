@@ -729,6 +729,9 @@ footer {
 #pack_list>*>* {
     text-align: start;
 }
+#pack_list summary {
+    text-align: start;
+}
 #pack_list summary span {
     vertical-align: top;
 }
