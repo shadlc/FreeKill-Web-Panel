@@ -232,7 +232,8 @@ class V1API(FlaskView):
         elif request.method == 'POST':
             server_name = request.json.get('name', '')
             config_text = request.json.get('config', '')
-            config = json.loads(config_text)
+            # 不解析直接覆写配置文件
+            config = config_text
             server_list = self.controller.getList()
             for server in server_list:
                 if server.name == server_name:

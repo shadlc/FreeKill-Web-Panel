@@ -74,7 +74,7 @@ export function showProcessingBox(msg, title='处理中', process=null) {
 }
 
 // 弹出代码修改框
-export function showCodeEditBox(msg, title='修改', text='', callback=null) {
+export function showCodeEditBox(msg, warning='', title='修改', text='', callback=null) {
   let box_div = `
   <div id="code_edit_dialog" class="modal">
     <div class="modal-dialog">
@@ -96,8 +96,15 @@ export function showCodeEditBox(msg, title='修改', text='', callback=null) {
   document.getElementById('code_edit_box').style.height = (window.innerHeight - 200) + 'px';
   document.getElementById('code_edit_box').style.width = window.innerWidth - 70 + 'px';
   document.getElementById('code_edit_confirm_btn').addEventListener('click', ()=>{
-    callback(document.getElementById('code_edit_box').value);
-    document.querySelectorAll('#code_edit_dialog').forEach((e)=>e.remove());
+    if(warning) {
+        showDialog(warning, '提示', ()=>{
+          callback(document.getElementById('code_edit_box').value);
+          document.querySelectorAll('#code_edit_dialog').forEach((e)=>e.remove());
+        });
+    } else {
+      callback(document.getElementById('code_edit_box').value);
+      document.querySelectorAll('#code_edit_dialog').forEach((e)=>e.remove());
+    }
   });
 }
 

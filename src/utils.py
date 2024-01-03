@@ -334,8 +334,11 @@ def readGameConfig(path: str) -> [bool, str]:
         return False, e
 
 # 写入游戏配置文件
-def writeGameConfig(path: str, config: dict) -> str | None:
+def writeGameConfig(path: str, config: dict | str) -> str | None:
     try:
+        if type(config) == str:
+            open(f'{path}/freekill.server.config.json', 'w').write(config)
+            return
         config_json = json.load(open(f'{path}/freekill.server.config.json'))
         for key in config:
             if config[key]:

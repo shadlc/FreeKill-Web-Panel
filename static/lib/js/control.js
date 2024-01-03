@@ -479,6 +479,7 @@ document.getElementById('config_btn').addEventListener('click', ()=>{
           final_callback(false);
           showCodeEditBox(
             '请在下方方框中修改新月杀配置并保存',
+            '改操作不可撤销，请注意备份配置文件',
             '配置修改',
             data.data.config,
             (config)=>{
