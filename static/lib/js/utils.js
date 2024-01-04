@@ -292,6 +292,36 @@ export function formatSize(value) {
   return size + unitArray[index];
 }
 
+// 输入一层字典套一层列表的数据生成对应表格
+export function createTable(title, header, data) {
+  let table = document.createElement('table');
+  let caption = document.createElement('caption');
+  caption.textContent = title;
+  table.appendChild(caption);
+  let row = document.createElement('tr');
+  for (let i in header) {
+    let cell = document.createElement('td');
+    cell.textContent = header[i];
+    row.appendChild(cell);
+  }
+  table.appendChild(row);
+  for (let key in data) {
+    if (data.hasOwnProperty(key)) {
+      row = document.createElement('tr');
+      let cell = document.createElement('td');
+      cell.textContent = key;
+      row.appendChild(cell);
+      for (let i = 0; i < data[key].length; i++) {
+        cell = document.createElement('td');
+        cell.textContent = data[key][i];
+        row.appendChild(cell);
+      }
+      table.appendChild(row);
+    }
+  }
+  return table;
+}
+
 // 获取新月杀最新版本号(不允许跨域访问，不可实现)
 // export function getFreeKillLatestVersion() {
 //   fetch('https://github.com/notify-ctrl/FreeKill/releases/latest')

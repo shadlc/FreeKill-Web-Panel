@@ -1,4 +1,4 @@
-import { changeScheme, showDialog, showProcessingBox, showTextBox, showCodeEditBox, convertBashColor, formatTime, formatSize } from './utils.js';
+import { changeScheme, showDialog, showProcessingBox, showTextBox, showCodeEditBox, convertBashColor, formatTime, formatSize, createTable } from './utils.js';
 import { getLatestVersion, executeCmd, getDetailInfo, startServer, stopServer, updateServer, getServerConfig, setServerConfig, modifyServerPort, getPlayerListInfo, getRoomListInfo, backupServer, getServerStatistics } from './net.js'
 
 // 主题相关
@@ -480,11 +480,17 @@ document.getElementById('backup_btn').addEventListener('click', ()=>{
 document.getElementById('statistics_btn').addEventListener('click', ()=>{
   showProcessingBox(
     '获取数据中...',
-    '提示',
+    '统计信息',
     (pre, final_callback)=>{
       getServerStatistics(server_name, (data)=>{
         if(data?.retcode == 0) {
-          pre.innerHTML = data?.msg;
+          pre.innerHTML = '<b class="center">服务器今日活跃人数：' + data?.data.daily_active + '</b>';
+          for(let mode in data?.data.player_win_rate) {
+            pre.appendChild(createTable('玩家胜率表<'+mode+'>', ['玩家名', '胜率', '胜场', '输场', '平局', '总计'], data?.data.player_win_rate[mode]));
+          }
+          for(let mode in data?.data.general_win_rate) {
+            pre.appendChild(createTable('角色胜率表<'+mode+'>', ['角色名', '胜率', '胜场', '输场', '平局', '总计'], data?.data.general_win_rate[mode]));
+          }
           final_callback(true);
         } else {
           final_callback(false);

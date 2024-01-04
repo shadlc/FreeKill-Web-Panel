@@ -5,7 +5,7 @@ import time
 from flask import Response
 from flask_classful import FlaskView, route, request
 
-from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, backupServer, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect, getSessionPid
+from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, backupGameServer, getGameServerStat, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect, getSessionPid
 from src.game_server import Server
 from src.controller import Controller
 from src.utils import config
@@ -276,11 +276,11 @@ class V1API(FlaskView):
         server_name = request.json.get('name', '')
         for server in self.controller.getList():
             if server.name == server_name:
-                result, msg = backupServer(server.path)
+                result, msg = backupGameServer(server.path)
                 if result:
                     return restful(200, f'服务器<{server_name}>备份成功\n{msg}')
                 else:
-                    return restful(200, f'服务器<{server_name}>备份失败\n{msg}')
+                    return restful(500, f'服务器<{server_name}>备份失败\n{msg}')
 
         return restful(404, '无法找到该服务器')
 
@@ -290,6 +290,11 @@ class V1API(FlaskView):
         list = self.controller.getList()
         for server in list:
             if server.name == server_name:
+                result, data = getGameServerStat(server.path)
+                if result:
+                    return restful(200, '', data)
+                else:
+                    return restful(500, f'获取服务器<{server_name}>统计数据失败\n错误原因：{data}')
                 return restful(200, '未实现')
 
         return restful(404, '无法找到该服务器')

@@ -318,7 +318,7 @@ def updateGameServer(server_name: str) -> str:
             return
 
 # 备份服务器
-def backupServer(server_path: str) -> [bool, str]:
+def backupGameServer(server_path: str) -> [bool, str]:
     try:
         backup_dir = config.backup_directory
         ignore_list: list = [backup_dir] + config.backup_ignore
@@ -341,6 +341,43 @@ def backupServer(server_path: str) -> [bool, str]:
         return False, f'无权限在该路径保存备份，请修改配置文件\n{e}'
     except Exception as e:
         return False, f'失败原因：{e}'
+
+def getGameServerStat(server_path: str) -> [bool, str]:
+    try:
+        db_file = os.path.join(server_path, 'server/users.db')
+        logging.debug(f'读取数据库{db_file}')
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
+        # 查询今日日活
+        cursor.execute("SELECT count(*) FROM usergameinfo WHERE date(lastLoginTime,'unixepoch','localtime') >= date('now','localtime','start of day') AND date(lastLoginTime,'unixepoch','localtime') < date('now','localtime','start of day','+1 days');")
+        daily_active_result = cursor.fetchone()
+        daily_active = daily_active_result[0] if len(daily_active_result) else 0
+        # 查询玩家胜率
+        cursor.execute('SELECT * FROM playerWinRate;')
+        player_win_rate_result = cursor.fetchall()
+        player_win_rate = {}
+        for item in player_win_rate_result:
+            id, player, mode, win, lose, draw, total, win_rate = item
+            if mode not in player_win_rate:
+                player_win_rate[mode] = {}
+            player_win_rate[mode][player] = [win_rate, win, lose, draw, total]
+        # 查询角色胜率
+        cursor.execute('SELECT * FROM generalWinRate;')
+        general_win_rate_result = cursor.fetchall()
+        general_win_rate = {}
+        for item in general_win_rate_result:
+            general, mode, win, lose, draw, total, win_rate = item
+            if mode not in general_win_rate:
+                general_win_rate[mode] = {}
+            general_win_rate[mode][general] = [win_rate, win, lose, draw, total]
+        cursor.close()
+        conn.close()
+
+        statistics_dict = {"daily_active": daily_active, "player_win_rate": player_win_rate, "general_win_rate": general_win_rate}
+        return True, statistics_dict
+    except Exception as e:
+        logging.error(f'读取数据库{db_file}发生错误：{e}')
+        return False, f'{e}'
 
 # 读取游戏配置文件
 def readGameConfig(path: str) -> [bool, str]:
@@ -450,6 +487,8 @@ def getPackList(path: str) -> dict:
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM packages')
         pack_list: list[tuple] = cursor.fetchall()
+        cursor.close()
+        conn.close()
         db_pack_dict = {pack[0]: pack[1:] for pack in pack_list}
         for name in db_pack_dict:
             package = {

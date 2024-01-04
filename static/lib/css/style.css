@@ -33,6 +33,18 @@ label {
     user-select: none;
     white-space: nowrap;
 }
+table {
+    border-collapse: collapse;
+    margin-bottom: 0.5rem;
+}
+table caption {
+    font-weight: bolder;
+    margin: 0.2rem;
+}
+td, th {
+    border: 1px solid #ccc;
+    padding: 0.1rem;
+}
 i.bi {
     font-style: normal;
     font-family: "iconfont";
