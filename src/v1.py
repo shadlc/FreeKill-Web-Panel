@@ -28,9 +28,9 @@ class V1API(FlaskView):
             server_dict_list.append(server.info(self.controller.server_list))
         return restful(200, '', {'list': server_dict_list})
 
-    @route('details', methods=['POST'])
+    @route('details', methods=['GET'])
     def details(self):
-        name = request.json.get('name', '')
+        name = request.args.get('name', '')
         server_list = self.controller.getList()
         for server in server_list:
             if server.name == name:
@@ -38,18 +38,18 @@ class V1API(FlaskView):
                 return restful(200, '', info_dict)
         return restful(404, '未找到该服务器')
 
-    @route('player_list', methods=['POST'])
+    @route('player_list', methods=['GET'])
     def player_list(self):
-        name = request.json.get('name', '')
+        name = request.args.get('name', '')
         for server in self.controller.list:
             if server.name == name:
                 info_dict = server.getPlayerList()
                 return restful(200, '', info_dict)
         return restful(404, '未找到该服务器')
 
-    @route('room_list', methods=['POST'])
+    @route('room_list', methods=['GET'])
     def room_list(self):
-        name = request.json.get('name', '')
+        name = request.args.get('name', '')
         for server in self.controller.list:
             if server.name == name:
                 info_dict = server.getRoomList()
@@ -153,9 +153,9 @@ class V1API(FlaskView):
         self.controller.add(server)
         return restful(200, f'服务器已添加并启动')
 
-    @route('start_server', methods=['GET'])
+    @route('start_server', methods=['POST'])
     def start_server(self):
-        server_name = request.args.get('name', '')
+        server_name = request.json.get('name', '')
         server_list = self.controller.getList()
         for server in server_list:
             if server.name == server_name:
@@ -178,9 +178,9 @@ class V1API(FlaskView):
 
         return restful(404, '无法找到该服务器')
 
-    @route('stop_server', methods=['GET'])
+    @route('stop_server', methods=['POST'])
     def stop_server(self):
-        server_name = request.args.get('name', '')
+        server_name = request.json.get('name', '')
         server_list = self.controller.getList()
         for server in server_list:
             if server.name == server_name:
@@ -191,9 +191,9 @@ class V1API(FlaskView):
 
         return restful(404, '无法找到该服务器')
 
-    @route('del_server', methods=['GET'])
+    @route('del_server', methods=['POST'])
     def del_server(self):
-        server_name = request.args.get('name', '')
+        server_name = request.json.get('name', '')
         list = self.controller.getList()
         for server in list:
             if server.name == server_name:
@@ -281,6 +281,16 @@ class V1API(FlaskView):
                     return restful(200, f'服务器<{server_name}>备份成功\n{msg}')
                 else:
                     return restful(200, f'服务器<{server_name}>备份失败\n{msg}')
+
+        return restful(404, '无法找到该服务器')
+
+    @route('statistics', methods=['GET'])
+    def statistics(self):
+        server_name = request.args.get('name', '')
+        list = self.controller.getList()
+        for server in list:
+            if server.name == server_name:
+                return restful(200, '未实现')
 
         return restful(404, '无法找到该服务器')
 

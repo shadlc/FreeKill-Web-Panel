@@ -51,17 +51,20 @@ export function getServerList(callback, base_url='') {
 
 // 启动服务器
 export function startServer(name, callback, base_url='') {
-  get(base_url + 'v1/start_server?name='+name, callback);
+  let data = {'name': name};
+  post(base_url + 'v1/start_server', data, callback);
 }
 
 // 停止服务器
 export function stopServer(name, callback, base_url='') {
-  get(base_url + 'v1/stop_server?name='+name, callback);
+  let data = {'name': name};
+  post(base_url + 'v1/stop_server', data, callback);
 }
 
 // 删除服务器
 export function deleteServer(name, callback, base_url='') {
-  get(base_url + 'v1/del_server?name='+name, callback);
+  let data = {'name': name};
+  post(base_url + 'v1/del_server', data, callback);
 }
 
 // 更新服务器
@@ -119,20 +122,17 @@ export function executeCmd(name, cmd, callback, base_url='') {
 
 // 获取服务器详细信息
 export function getDetailInfo(name, callback, base_url='') {
-  let data = {'name': name};
-  post(base_url + 'v1/details', data, callback);
+  get(base_url + 'v1/details?name='+name, callback);
 }
 
 // 获取服务器玩家列表
 export function getPlayerListInfo(name, callback, base_url='') {
-  let data = {'name': name};
-  post(base_url + 'v1/player_list', data, callback);
+  get(base_url + 'v1/player_list?name='+name, callback);
 }
 
 // 获取服务器房间列表
 export function getRoomListInfo(name, callback, base_url='') {
-  let data = {'name': name};
-  post(base_url + 'v1/room_list', data, callback);
+  get(base_url + 'v1/room_list?name='+name, callback);
 }
 
 // 获取服务器配置文件
@@ -156,4 +156,9 @@ export function modifyServerPort(name, port, callback, base_url='') {
 export function backupServer(name, callback, base_url='') {
   let data = {'name': name};
   post(base_url + 'v1/backup', data, callback);
+}
+
+// 获取服务器统计数据
+export function getServerStatistics(name, callback, base_url='') {
+  get(base_url + 'v1/statistics?name='+name, callback);
 }

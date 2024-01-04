@@ -1,5 +1,5 @@
 import { changeScheme, showDialog, showProcessingBox, showTextBox, showCodeEditBox, convertBashColor, formatTime, formatSize } from './utils.js';
-import { getLatestVersion, executeCmd, getDetailInfo, startServer, stopServer, updateServer, getServerConfig, setServerConfig, modifyServerPort, getPlayerListInfo, getRoomListInfo, backupServer } from './net.js'
+import { getLatestVersion, executeCmd, getDetailInfo, startServer, stopServer, updateServer, getServerConfig, setServerConfig, modifyServerPort, getPlayerListInfo, getRoomListInfo, backupServer, getServerStatistics } from './net.js'
 
 // 主题相关
 const themeScheme = window.matchMedia('(prefers-color-scheme: light)');
@@ -478,8 +478,21 @@ document.getElementById('backup_btn').addEventListener('click', ()=>{
 
 // 获取服务器统计信息按钮
 document.getElementById('statistics_btn').addEventListener('click', ()=>{
-  // TODO
-  showDialog('未实现');
+  showProcessingBox(
+    '获取数据中...',
+    '提示',
+    (pre, final_callback)=>{
+      getServerStatistics(server_name, (data)=>{
+        if(data?.retcode == 0) {
+          pre.innerHTML = data?.msg;
+          final_callback(true);
+        } else {
+          final_callback(false);
+          showDialog(data?.msg);
+        }
+      }, base_url_slash);
+    }
+  );
 });
 
 // 修改服务器端口按钮
