@@ -14,7 +14,7 @@ default_config_dict = {
         '.github',
         'build',
     ],
-    'extra_trans': {
+    'custom_trans': {
         'mobile_effect': '手杀特效',
         'utility': '常用函数',
     },
@@ -33,7 +33,7 @@ class Config:
         self.version_check_url = self.raw.get('version_check_url')
         self.backup_directory = self.raw.get('backup_directory')
         self.backup_ignore = self.raw.get('backup_ignore')
-        self.extra_trans = self.raw.get('extra_trans')
+        self.custom_trans = self.raw.get('custom_trans')
         self.server_dict = self.raw.get('server_dict')
         self.verify()
 
@@ -94,11 +94,11 @@ class Config:
             value = default_config_dict[key]
             self.save(key, value)
             self.backup_ignore = value
-        if self.extra_trans is None:
-            key = "extra_trans"
+        if self.custom_trans is None:
+            key = "custom_trans"
             value = default_config_dict[key]
             self.save(key, value)
-            self.extra_trans = value
+            self.custom_trans = value
         if self.server_dict is None:
             key = "server_dict"
             value = default_config_dict[key]

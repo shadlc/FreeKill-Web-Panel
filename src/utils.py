@@ -323,22 +323,24 @@ def backupServer(server_path: str) -> [bool, str]:
         backup_dir = config.backup_directory
         ignore_list: list = [backup_dir] + config.backup_ignore
         ignore_list = [os.path.join(server_path, i) for i in ignore_list]
-        backup_dir_path = os.path.join(server_path, backup_dir)
+        backup_dir_path = os.path.join(server_path, backup_dir) if backup_dir[0] != '/' else backup_dir
         os.makedirs(backup_dir_path, exist_ok=True)
         backup_zip = os.path.join(backup_dir_path, f'backup-{time.strftime("%Y%m%d-%H-%M-%S", time.localtime())}.zip')
         with zipfile.ZipFile(backup_zip, 'w', zipfile.ZIP_DEFLATED) as zip:
             for root, dirs, files in os.walk(server_path):
                 if len([i for i in ignore_list if i in root]):
-                    print(root, dirs, files)
                     continue
                 for file in files:
                     file_path = os.path.join(root, file)
+                    if file_path in ignore_list:
+                        continue
                     zip.write(file_path, os.path.relpath(file_path, server_path))
         backup_size = os.path.getsize(backup_zip) / (1024 * 1024)
         return True, f'备份包路径：[{backup_zip}]\n备份包大小[{round(backup_size, 2)}MB]'
+    except PermissionError as e:
+        return False, f'无权限在该路径保存备份，请修改配置文件\n{e}'
     except Exception as e:
-        raise e
-        return False, str(e)
+        return False, f'失败原因：{e}'
 
 # 读取游戏配置文件
 def readGameConfig(path: str) -> [bool, str]:
@@ -440,7 +442,7 @@ def getRoomList(name: str, session_type: str, path: str) -> dict:
 # 获取指定服务器扩充包
 def getPackList(path: str) -> dict:
     pack_dict = getPackListFromDir(os.path.join(path, 'packages'))
-    trans_dict = config.extra_trans
+    trans_dict = config.custom_trans
     try:
         db_file = os.path.join(path, 'packages/packages.db')
         logging.debug(f'读取数据库 {db_file}')
@@ -528,7 +530,7 @@ def tailLog(conn: Connection, sid: str) -> None:
                 return
             conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;33mI[0;0m] 服务器未启动，输入指令[0;33m start [0;0m启动服务器\n'})
         elif not handled:
-            conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;33mW[0;0m] 服务器不是由本程序接管启动，只能进行其他操作，无法与终端交互，请关闭服务器后由本程序接管启动，再刷新本页面实现与终端交互\n'})
+            conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;33mW[0;0m] 服务器未正确由本程序接管启动，只能进行其他操作，无法与终端交互，请关闭服务器后由本程序接管启动，再刷新本页面实现与终端交互\n'})
             while conn.contains(sid):
                 time.sleep(1)
         while conn.contains(sid) and not path and not conn.clients[sid].get('path'):

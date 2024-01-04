@@ -280,7 +280,7 @@ class V1API(FlaskView):
                 if result:
                     return restful(200, f'服务器<{server_name}>备份成功\n{msg}')
                 else:
-                    return restful(200, f'服务器<{server_name}>备份失败，原因：{msg}')
+                    return restful(200, f'服务器<{server_name}>备份失败\n{msg}')
 
         return restful(404, '无法找到该服务器')
 
