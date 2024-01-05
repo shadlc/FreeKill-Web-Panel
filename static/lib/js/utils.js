@@ -293,44 +293,123 @@ export function formatSize(value) {
 }
 
 // 输入一层字典套一层列表的数据生成对应表格
-export function createTable(title, header, data) {
+export function createTable(title, header, data, trans_table, show=true) {
   let table = document.createElement('table');
   let caption = document.createElement('caption');
+  caption.style.cursor = 'pointer';
+  if (!show) {
+    caption.classList.add('hide-content');
+    caption.innerHTML = caption.innerHTML.replace('▼', '▶');
+  }
+  caption.onclick = (e)=>{
+    let self = e.target;
+    console.log(e.which);
+    if (self.classList.contains('hide-content')) {
+      self.classList.remove('hide-content');
+      caption.innerHTML = caption.innerHTML.replace('▶', '▼');
+    } else {
+      self.classList.add('hide-content');
+      caption.innerHTML = caption.innerHTML.replace('▼', '▶');
+    }
+  }
   caption.textContent = title;
   table.appendChild(caption);
   let row = document.createElement('tr');
   for (let i in header) {
-    let cell = document.createElement('td');
-    cell.textContent = header[i];
-    row.appendChild(cell);
+    let th = document.createElement('th');
+    th.style.cursor = 'pointer';
+    th.onclick = (e)=>{
+      sortTable(e.target);
+    }
+    th.textContent = header[i];
+    row.appendChild(th);
   }
   table.appendChild(row);
   for (let key in data) {
-    if (data.hasOwnProperty(key)) {
-      row = document.createElement('tr');
-      let cell = document.createElement('td');
+    row = document.createElement('tr');
+    let cell = document.createElement('td');
+    if (key in trans_table) {
+      cell.textContent = trans_table[key];
+      cell.title = key;
+    } else {
       cell.textContent = key;
-      row.appendChild(cell);
-      for (let i = 0; i < data[key].length; i++) {
-        cell = document.createElement('td');
-        cell.textContent = data[key][i];
-        row.appendChild(cell);
-      }
-      table.appendChild(row);
+      cell.title = key;
     }
+    row.appendChild(cell);
+    for (let i = 0; i < data[key].length; i++) {
+      cell = document.createElement('td');
+      cell.textContent = data[key][i];
+      row.appendChild(cell);
+    }
+    table.appendChild(row);
   }
   return table;
 }
 
-// 获取新月杀最新版本号(不允许跨域访问，不可实现)
-// export function getFreeKillLatestVersion() {
-//   fetch('https://github.com/notify-ctrl/FreeKill/releases/latest')
-//   .then(response => {
-//     if (response.ok) {
-//       return response.url;
-//     }
-//   })
-//   .then(url => {return console.log(url.split("/").pop());})
-//   .catch(error => console.error(error));
-//   return;
-// }
+// 输入表格的一个表头元素,以这个表头对表进行排序
+function sortTable(element) {
+  let index = Array.from(element.parentNode.children).indexOf(element);
+  let table = element.parentNode.parentNode;
+  let order = 'asc';
+
+  if (element.classList.contains('desc')) {
+    element.classList.remove('desc');
+    element.classList.add('asc');
+    order = 'asc';
+    element.innerHTML = element.innerHTML.replace('▲', '▼');
+  } else if (element.classList.contains('asc')) {
+    element.classList.add('desc');
+    element.classList.remove('asc');
+    order = 'desc';
+    element.innerHTML = element.innerHTML.replace('▼', '▲');
+  } else {
+    Array.from(table.children[1].children).forEach((e)=>{
+      if (e.tagName === "TH") {
+        e.classList.remove('asc');
+        e.classList.remove('desc');
+        e.innerHTML = e.innerHTML.replace(/▼|▲/g, '');
+      }
+    })
+    element.classList.add('asc');
+    element.innerHTML = element.innerHTML + '▼';
+  }
+
+  let td_arr = [];
+  let row_count = table.rows.length;
+  for (let i = 1; i < row_count; i++) {
+    let cell = table.rows[i].cells[index].innerHTML;
+    td_arr.push(cell);
+  }
+
+  let is_all_numbers = td_arr.every(str => !isNaN(Number(str)));
+  if (is_all_numbers) {
+    td_arr = td_arr.map(str => Number(str));
+  }
+
+  for (let i = 0; i < row_count - 2; i++) {
+    for (let j = 0; j < row_count - 2 - i; j++) {
+      if (order == 'asc') {
+        if (td_arr[j] < td_arr[j + 1]) {
+          let temp = td_arr[j];
+          td_arr[j] = td_arr[j + 1];
+          td_arr[j + 1] = temp;
+        }
+      } else {
+        if (td_arr[j] > td_arr[j + 1]) {
+          let temp = td_arr[j];
+          td_arr[j] = td_arr[j + 1];
+          td_arr[j + 1] = temp;
+        }
+      }
+    }
+  }
+
+  for (let item in td_arr) {
+    for (let i = item; i < row_count; i++) {
+      if (table.rows[i].cells[index].innerHTML == td_arr[item]) {
+        table.insertBefore(table.rows[i], table.rows[parseInt(item)+1]);
+        continue;
+      };
+    }
+  }
+}

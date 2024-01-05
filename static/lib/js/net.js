@@ -17,8 +17,8 @@ async function get(url, callback) {
   }).then(data => callback(data))
     .catch(error => {
       showDialog(error, '请求出错');
-      callback();
-  });
+              callback();
+        });
 }
 
 // POST Method
@@ -40,8 +40,8 @@ async function post(url, data, callback) {
   }).then(data => callback(data))
     .catch(error => {
       showDialog(error, '请求出错');
-      callback();
-  });
+              callback();
+        });
 }
 
 // 获取服务器列表
@@ -161,4 +161,9 @@ export function backupServer(name, callback, base_url='') {
 // 获取服务器统计数据
 export function getServerStatistics(name, callback, base_url='') {
   get(base_url + 'v1/statistics?name='+name, callback);
+}
+
+// 获取服务器字典表
+export function getServerTransTable(name, callback, base_url='') {
+  get(base_url + 'v1/trans_table?name='+name, callback);
 }

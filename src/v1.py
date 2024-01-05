@@ -5,7 +5,7 @@ import time
 from flask import Response
 from flask_classful import FlaskView, route, request
 
-from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, backupGameServer, getGameServerStat, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect, getSessionPid
+from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, backupGameServer, getGameServerStat, getGameTransTable, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect, getSessionPid
 from src.game_server import Server
 from src.controller import Controller
 from src.utils import config
@@ -54,6 +54,16 @@ class V1API(FlaskView):
             if server.name == name:
                 info_dict = server.getRoomList()
                 return restful(200, '', info_dict)
+        return restful(404, '未找到该服务器')
+
+    @route('trans_table', methods=['GET'])
+    def trans_table(self):
+        name = request.args.get('name', '')
+        raw = request.args.get('raw', False)
+        for server in self.controller.list:
+            if server.name == name:
+                trans_table = getGameTransTable(server.path, raw)
+                return restful(200, '', trans_table)
         return restful(404, '未找到该服务器')
 
     @route('execute', methods=['POST'])

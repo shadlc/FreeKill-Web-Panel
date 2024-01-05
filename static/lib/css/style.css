@@ -34,17 +34,38 @@ label {
     white-space: nowrap;
 }
 table {
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     margin-bottom: 0.5rem;
 }
 table caption {
+    white-space: nowrap;
     font-weight: bolder;
     margin: 0.2rem;
 }
+caption.hide-content ~ * {
+    display: none;
+}
 td, th {
-    border: 1px solid #ccc;
+    border: 1px solid grey;
     padding: 0.1rem;
 }
+th {
+    white-space: nowrap;
+}
+th:first-child {
+    border-radius: 0.5rem 0 0 0;
+}
+th:last-child {
+    border-radius: 0 0.5rem 0 0;
+}
+tr:last-child td:first-child {
+    border-radius: 0 0 0 0.5rem;
+}
+tr:last-child td:last-child {
+    border-radius: 0 0 0.5rem 0;
+}
+
 i.bi {
     font-style: normal;
     font-family: "iconfont";
@@ -112,7 +133,7 @@ footer {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
 }
 .vertical-center {
     display: flex;

@@ -1,5 +1,10 @@
-import { changeScheme, showDialog, showProcessingBox, showTextBox, showCodeEditBox, convertBashColor, formatTime, formatSize, createTable } from './utils.js';
-import { getLatestVersion, executeCmd, getDetailInfo, startServer, stopServer, updateServer, getServerConfig, setServerConfig, modifyServerPort, getPlayerListInfo, getRoomListInfo, backupServer, getServerStatistics } from './net.js'
+import { changeScheme, showDialog, showProcessingBox, showTextBox, showCodeEditBox,
+    convertBashColor, formatTime, formatSize, createTable
+} from './utils.js';
+import { getLatestVersion, executeCmd, getDetailInfo, getPlayerListInfo, getRoomListInfo,
+    startServer, stopServer, updateServer, getServerConfig, backupServer, 
+    setServerConfig, modifyServerPort, getServerStatistics, getServerTransTable
+} from './net.js'
 
 // 主题相关
 const themeScheme = window.matchMedia('(prefers-color-scheme: light)');
@@ -25,6 +30,7 @@ document.querySelector('#title').innerText = server_name;
 let start_time = 0;
 let handled = false;
 let session_type = '';
+let trans_table = {};
 
 // 页面加载完毕后触发
 window.onload = function() {
@@ -203,9 +209,8 @@ async function refreshPackList(pack_list) {
       style = ' style="opacity:0.6;"'
       badge += '<badge>未启用</badge>'
     }
-    if(url) {
-      badge += '<badge>可更新包</badge>';
-    } else {
+    if(!url) {
+      badge += '<badge>内置包</badge>';
       info_style = ' style="display:none;"';
     }
 
@@ -482,20 +487,58 @@ document.getElementById('statistics_btn').addEventListener('click', ()=>{
     '获取数据中...',
     '统计信息',
     (pre, final_callback)=>{
-      getServerStatistics(server_name, (data)=>{
+      getServerTransTable(server_name, (data)=>{
         if(data?.retcode == 0) {
-          pre.innerHTML = '<b class="center">服务器今日活跃人数：' + data?.data.daily_active + '</b>';
-          for(let mode in data?.data.player_win_rate) {
-            pre.appendChild(createTable('玩家胜率表<'+mode+'>', ['玩家名', '胜率', '胜场', '输场', '平局', '总计'], data?.data.player_win_rate[mode]));
-          }
-          for(let mode in data?.data.general_win_rate) {
-            pre.appendChild(createTable('角色胜率表<'+mode+'>', ['角色名', '胜率', '胜场', '输场', '平局', '总计'], data?.data.general_win_rate[mode]));
-          }
-          final_callback(true);
-        } else {
-          final_callback(false);
-          showDialog(data?.msg);
+          trans_table = data?.data;
         }
+        getServerStatistics(server_name, (data)=>{
+          if(data?.retcode == 0) {
+            pre.classList.add('center');
+            pre.innerHTML = '<b>服务器今日活跃人数：' + data?.data.daily_active + '</b>';
+            let hr = document.createElement("hr");
+            hr.style.width = '90%';
+            pre.appendChild(hr);
+            for(let mode in data?.data.player_win_rate) {
+              let mode_title = mode;
+              if (mode == '0_all') {
+                mode_title = '全部模式';
+              }else if (mode in trans_table) {
+                mode_title = trans_table[mode];
+              }
+              pre.style.padding = '1rem';
+              pre.appendChild(createTable(
+                '▶玩家胜率表<'+mode_title+'>',
+                ['玩家名', '胜率', '胜场', '输场', '平局', '总计'],
+                data?.data.player_win_rate[mode],
+                trans_table,
+                false
+              ));
+            }
+            hr = document.createElement("hr");
+            hr.style.width = '90%';
+            pre.appendChild(hr);
+            for(let mode in data?.data.general_win_rate) {
+              let mode_title = mode;
+              if (mode == '0_all') {
+                mode_title = '全部模式';
+              }else if (mode in trans_table) {
+                mode_title = trans_table[mode];
+              }
+              pre.style.padding = '1rem';
+              pre.appendChild(createTable(
+                '▶角色胜率表<'+mode_title+'>',
+                ['角色名', '胜率', '胜场', '输场', '平局', '总计'],
+                data?.data.general_win_rate[mode],
+                trans_table,
+                false
+              ));
+            }
+            final_callback(true);
+          } else {
+            final_callback(false);
+            showDialog(data?.msg);
+          }
+        }, base_url_slash);
       }, base_url_slash);
     }
   );

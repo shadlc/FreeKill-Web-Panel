@@ -355,21 +355,39 @@ def getGameServerStat(server_path: str) -> [bool, str]:
         # 查询玩家胜率
         cursor.execute('SELECT * FROM playerWinRate;')
         player_win_rate_result = cursor.fetchall()
-        player_win_rate = {}
+        player_win_rate = {"0_all": {}}
         for item in player_win_rate_result:
             id, player, mode, win, lose, draw, total, win_rate = item
             if mode not in player_win_rate:
                 player_win_rate[mode] = {}
             player_win_rate[mode][player] = [win_rate, win, lose, draw, total]
+            if player in player_win_rate["0_all"]:
+                des = [win_rate, win, lose, draw, total]
+                sou = player_win_rate["0_all"][player]
+                player_win_rate["0_all"][player] = [x + y for x, y in zip(sou, des)]
+            else:
+                player_win_rate["0_all"][player] = [win_rate, win, lose, draw, total]
+        for player in player_win_rate["0_all"]:
+            data = player_win_rate["0_all"][player]
+            player_win_rate["0_all"][player][0] = round(data[1] / data[4] * 100, 2)
         # 查询角色胜率
         cursor.execute('SELECT * FROM generalWinRate;')
         general_win_rate_result = cursor.fetchall()
-        general_win_rate = {}
+        general_win_rate = {"0_all": {}}
         for item in general_win_rate_result:
             general, mode, win, lose, draw, total, win_rate = item
             if mode not in general_win_rate:
                 general_win_rate[mode] = {}
             general_win_rate[mode][general] = [win_rate, win, lose, draw, total]
+            if general in general_win_rate["0_all"]:
+                des = [win_rate, win, lose, draw, total]
+                sou = general_win_rate["0_all"][general]
+                general_win_rate["0_all"][general] = [x + y for x, y in zip(sou, des)]
+            else:
+                general_win_rate["0_all"][general] = [win_rate, win, lose, draw, total]
+        for general in general_win_rate["0_all"]:
+            data = general_win_rate["0_all"][general]
+            general_win_rate["0_all"][general][0] = round(data[1] / data[4] * 100, 2)
         cursor.close()
         conn.close()
 
@@ -636,6 +654,22 @@ def getPerfByPid(pid: int) -> list:
         memory_info = process.memory_info().rss
     except psutil.NoSuchProcess:...
     return f'{cpu_percent}%', memory_info
+
+# 获取指定新月杀目录下的所有扩展包的所有翻译表
+def getGameTransTable(directory: str, raw: str = False) -> dict:
+    directory = os.path.join(directory, 'packages')
+    root_path, pack_dir = os.path.split(directory.rstrip('/'))
+    pack_path_list = [f.path for f in os.scandir(directory) if f.is_dir()]
+    trans_table = config.custom_trans
+    for pack_path in pack_path_list:
+        pack_name = os.path.basename(pack_path)
+        init_file = os.path.join(pack_dir, pack_name, 'init.lua')
+        _, _, trans_dict = extractExtension(root_path, init_file)
+        if raw:
+            trans_table.update(trans_dict)
+        else:
+            trans_table.update({key: value for key, value in trans_dict.items() if not key.startswith(('~', '@', '#', '$', '^', ':'))})
+    return trans_table
 
 # 寻找所有指定目录下的新月杀扩展包
 def getPackListFromDir(directory: str) -> dict:
