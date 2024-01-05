@@ -21,16 +21,18 @@
 - **网页操作新月杀服务器终端**
 - **一键更新新月杀服务器**
 - **修改月杀服务器参数与配置**
-- **前端展示玩家列表、房间列表、扩展包列表**
+- **展示玩家列表、房间列表、扩展包列表**
+- **一键备份新月杀服务器**
+- **查询游戏内胜率与日活**
 
 
 ## 📸 相关截图
 
 <div align=center>
-<img src="https://github.com/shadlc/FreeKill-Web-Panel/assets/46913095/9c075b65-ca20-4cc1-adb6-f43215fca346" width=70%>
+<img src="https://github.com/shadlc/FreeKill-Web-Panel/assets/46913095/ffdab3fe-8ef6-4907-89a8-7e231db94b10" width=70%>
 </div>
 <div align=center>
-<img src="https://github.com/shadlc/FreeKill-Web-Panel/assets/46913095/a1b45e02-af14-467b-b090-e4802b9ab551" width=70%>
+<img src="https://github.com/shadlc/FreeKill-Web-Panel/assets/46913095/e2f7fe7f-21ad-447d-a0ae-052019fc5811" width=70%>
 </div>
 
 
