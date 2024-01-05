@@ -669,7 +669,7 @@ def extractExtension(root_path: str, lua_file: str) -> tuple:
     if not os.path.exists(lua_path):
         return '', [], {}
     lua_code = open(lua_path, encoding='utf-8').read()
-    lua_code = '\n'.join([line for line in lua_code.split('\n') if '--' not in line])
+    lua_code = '\n'.join([line for line in lua_code.split('\n') if not line.strip().startswith('--')])
 
     if result := re.search(r'extension.extensionName[^"\']*["\']([^"\']*)', lua_code):
         extension_name = result.groups()[0]
