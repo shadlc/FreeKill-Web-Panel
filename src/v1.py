@@ -99,18 +99,18 @@ class V1API(FlaskView):
     
     @route('add_server', methods=['POST'])
     def add_server(self):
-        name = request.json.get('name', '')
-        port = int(request.json.get('port')) if request.json.get('port').isdigit() else 0
-        path = request.json.get('path', '')
-        desc = request.json.get('desc', '')
-        icon = request.json.get('icon', '') 
-        capacity = int(request.json.get('capacity')) if request.json.get('capacity').isdigit() else 0
-        temp_ban_time = int(request.json.get('temp_ban_time')) if request.json.get('temp_ban_time').isdigit() else 20
-        motd = request.json.get('motd', '')
+        name = request.json.get('name', None)
+        port = int(request.json.get('port')) if request.json.get('port').isdigit() else None
+        path = request.json.get('path', None)
+        desc = request.json.get('desc', None)
+        icon = request.json.get('icon', None) 
+        capacity = int(request.json.get('capacity')) if request.json.get('capacity').isdigit() else None
+        temp_ban_time = int(request.json.get('temp_ban_time')) if request.json.get('temp_ban_time').isdigit() else None
+        motd = request.json.get('motd', None)
         enable_bots = request.json.get('enable_bots', None)
         if enable_bots != None:
             enable_bots = bool(enable_bots)
-        session_type = request.json.get('session_type', '')
+        session_type = request.json.get('session_type', None)
         
         server_list = self.controller.getList()
         if not name:
@@ -305,7 +305,24 @@ class V1API(FlaskView):
                     return restful(200, '', data)
                 else:
                     return restful(500, f'获取服务器<{server_name}>统计数据失败\n错误原因：{data}')
-                return restful(200, '未实现')
+
+        return restful(404, '无法找到该服务器')
+
+    @route('set_pack_version', methods=['POST'])
+    def get_git_tree(self):
+        server_name = request.json.get('name', '')
+        pack_code = request.json.get('code', '')
+        pack_hash = request.json.get('hash', '')
+        list = self.controller.getList()
+        for server in list:
+            if server.name == server_name:
+                # TODO
+                return restful(500, '暂未实现')
+                # result, data = getGameServerStat(server.path)
+                # if result:
+                #     return restful(200, '', data)
+                # else:
+                #     return restful(500, f'获取服务器<{server_name}>统计数据失败\n错误原因：{data}')
 
         return restful(404, '无法找到该服务器')
 
@@ -318,5 +335,14 @@ class V1API(FlaskView):
                 return restful(200, '', {'version': version})
             else:
                 return restful(400, f'获取FreeKill最新版本号时发生网络错误', {'version': '未知版本'})
+
+        return restful(404, '无法解析该请求')
+
+    @route('get_git_tree', methods=['GET'])
+    def get_git_tree(self):
+        git_url = request.args.get('url', '')
+        if git_url:
+            # TODO
+            return restful(500, '暂未实现');
 
         return restful(404, '无法解析该请求')

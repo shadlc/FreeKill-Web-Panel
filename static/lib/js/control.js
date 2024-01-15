@@ -3,7 +3,8 @@ import { changeScheme, showDialog, showProcessingBox, showTextBox, showCodeEditB
 } from './utils.js';
 import { getLatestVersion, executeCmd, getDetailInfo, getPlayerListInfo, getRoomListInfo,
     startServer, stopServer, updateServer, getServerConfig, backupServer, 
-    setServerConfig, modifyServerPort, getServerStatistics, getServerTransTable
+    setServerConfig, modifyServerPort, getServerStatistics, getServerTransTable,
+    getPackGitTree, setPackVersion
 } from './net.js'
 
 // 主题相关
@@ -193,6 +194,7 @@ async function refreshPackList(pack_list) {
     let name = pack_list[code].name;
     let url = pack_list[code].url;
     let hash = pack_list[code].hash;
+    let enabled = pack_list[code].enabled;
     let pack_count = 0;
     if(pack_list[code]?.packs) {
       pack_count = Object.keys(pack_list[code].packs).length;
@@ -200,14 +202,11 @@ async function refreshPackList(pack_list) {
     let badge = '';
     let style = '';
     let info_style = '';
+
     if(pack_count) {
       badge += '<badge>'+pack_count+'子包</badge>';
     } else {
       badge += '<badge>无子包</badge>';
-    }
-    if(pack_list[code].enabled === 0) {
-      style = ' style="opacity:0.6;"'
-      badge += '<badge>未启用</badge>'
     }
     if(!url) {
       badge += '<badge>内置包</badge>';
@@ -236,11 +235,12 @@ async function refreshPackList(pack_list) {
     }
 
     let div = `
-    <div class="capsule-box"`+style+`>
+    <div class="capsule-box pack"`+style+` data-code=`+code+` data-enable=`+enabled+`>
         <details>
           <summary>
             <i class="bi" title="扩展包名">&#xF7D3;</i>
             <span title="`+name+`">`+name+' ('+code+')'+`</span>
+            <badge class="disabled">未启用</badge>
             `+badge+`
           </summary>
           <div `+info_style+`>
@@ -253,12 +253,47 @@ async function refreshPackList(pack_list) {
             <span title="版本">版本</span>
             <span title="`+hash+`">`+hash+`</span>
           </div>
+          <div `+info_style+`>
+            <div class="btn package-change-btn">更新扩展包版本</div>
+          </div>
           <div style="display:flex;flex-wrap:wrap;">`+packs+`</div>
         </details>
     </div>
     `;
     list_div.insertAdjacentHTML('BeforeEnd', div);
+
+    document.querySelector('.pack[data-code='+code+'] .package-change-btn').onclick = (e)=>{
+      let parent = e.target.parentNode.parentNode.parentNode;
+      changePackVersion(parent, code, name, url, hash);
+    };
   }
+}
+
+// 更改扩充包版本
+function changePackVersion(element, code, name, url, hash) {
+  showProcessingBox(
+    '获取扩充包<'+name+'('+code+')>版本信息中...',
+    '提示',
+    (pre, final_callback)=>{
+      getPackGitTree(url, (data)=>{
+        if(data?.retcode == 0) {
+            pre.innerHTML = data?.data;
+            // TODO
+            // setPackVersion(server_name, pack_code, pack_hash, (data)=>{
+            //   if(data?.retcode == 0) {
+            //     final_callback(true);
+            //   } else {
+            //     final_callback(false);
+            //     showDialog(data?.msg);
+            //   }
+            // }, base_url_slash);
+        } else {
+          final_callback(false);
+          showDialog(data?.msg);
+        }
+      }, base_url_slash);
+    }
+  );
 }
 
 // 实时监控终端

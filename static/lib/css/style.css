@@ -65,6 +65,9 @@ tr:last-child td:first-child {
 tr:last-child td:last-child {
     border-radius: 0 0 0.5rem 0;
 }
+details {
+    text-align: start !important;
+}
 
 i.bi {
     font-style: normal;
@@ -478,6 +481,21 @@ footer {
 }
 .capsule-box>div:last-child {
     border-bottom: none;
+}
+.pack[data-enable="0"] {
+    opacity: 0.7;
+}
+.pack .disabled {
+    display: none;
+}
+.pack[data-enable="0"] .disabled {
+    display: initial;
+}
+.pack[data-enable="0"] .package-disable-btn {
+    display: none;
+}
+.pack[data-enable="1"] .package-enable-btn {
+    display: none;
 }
 
 .server-item {

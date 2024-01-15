@@ -264,7 +264,6 @@ def stopGameServer(name: str, session_type: str) -> bool:
     else:
         command = f''' screen -S {name} -X stuff "\004\004" '''
     result = runCmd(command)
-    print(result)
     if result != '':
         return True
     return False
@@ -414,7 +413,7 @@ def writeGameConfig(path: str, config: dict | str) -> str | None:
             return
         config_json = json.load(open(f'{path}/freekill.server.config.json'))
         for key in config:
-            if config[key]:
+            if config[key] != None:
                 config_json[key] = config[key]
         json.dump(config_json, open(f'{path}/freekill.server.config.json', 'w'), ensure_ascii=False, indent=2)
     except Exception as e:

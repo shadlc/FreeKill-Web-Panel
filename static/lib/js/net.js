@@ -167,3 +167,14 @@ export function getServerStatistics(name, callback, base_url='') {
 export function getServerTransTable(name, callback, base_url='') {
   get(base_url + 'v1/trans_table?name='+name, callback);
 }
+
+// 获取指定Git仓库的历史
+export function getPackGitTree(url, callback, base_url='') {
+  get(base_url + 'v1/get_git_tree?url='+url, callback);
+}
+
+// 更新指定服务器扩展包到指定版本
+export function setPackVersion(server_name, pack_code, pack_hash, callback, base_url='') {
+  let data = {'name': server_name, 'code': pack_code, 'hash': pack_hash};
+  post(base_url + 'v1/set_pack_version', data, callback);
+}

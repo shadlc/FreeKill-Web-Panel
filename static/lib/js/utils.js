@@ -303,7 +303,6 @@ export function createTable(title, header, data, trans_table, show=true) {
   }
   caption.onclick = (e)=>{
     let self = e.target;
-    console.log(e.which);
     if (self.classList.contains('hide-content')) {
       self.classList.remove('hide-content');
       caption.innerHTML = caption.innerHTML.replace('▶', '▼');
