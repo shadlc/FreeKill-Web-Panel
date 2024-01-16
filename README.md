@@ -58,7 +58,7 @@
 - **`version_check_url`为程序检测新月杀是否有新版本更新的网址，默认地址为[https://gitee.com/notify-ctrl/FreeKill/releases/latest](https://gitee.com/notify-ctrl/FreeKill/releases/latest)，原理是使用latest标签会自动进行302跳转到最新tag的release地址**
 - **`backup_directory`是本程序备份包路径，默认为`backups`，可使用相对路径或绝对路径**
 - **`backup_ignore`是备份时忽略的文件或文件夹列表，默认为忽略`.git`、`.github`、`build`，备份包文件夹路径自动排除**
-- **`custom_trans`为自定义翻译表，当读取新月杀扩充包时，其未对某个值进行翻译时，会以此字典作为全局基础翻译表，如果该值已被翻译表处理过，则无效**
+- **`custom_trans`为自定义翻译表，当读取新月杀拓展包时，其未对某个值进行翻译时，会以此字典作为全局基础翻译表，如果该值已被翻译表处理过，则无效**
 - **`server_dict`是由本程序接管启动的服务器列表，默认为空，原则上不应手动修改，本程序会将变动实时写入**
 
 ### 反向代理设置

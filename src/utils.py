@@ -52,6 +52,46 @@ def getFKVersion() -> str | None:
         logging.error(e)
         return
 
+# 取得指定Git仓库的提交历史
+def getGitTree(url: str) -> list:
+    tree = {}
+    try:
+        git_url = url.replace('.git', '')
+        repo = '/'.join(git_url.split('/')[-2:])
+        if 'gitee.com' in git_url:
+            commit_url = f'https://gitee.com/api/v5/repos/{repo}/commits?per_page=100'
+            branch_url = f'https://gitee.com/api/v5/repos/{repo}/branches'
+        elif 'github.com' in git_url:
+            commit_url = f'https://api.github.com/repos/{repo}/commits?per_page=100'
+            branch_url = f'https://api.github.com/repos/{repo}/branches'
+        else:
+            return False, '不支持此站点的解析'
+        branch_response = requests.get(branch_url, timeout=10)
+        commit_response = requests.get(commit_url, timeout=10)
+        if branch_response.status_code in [200, 304]:
+            branches = branch_response.json()
+            for branch in branches:
+                name = branch['name']
+                sha = branch['commit']['sha']
+                tree[name] = {'sha': sha, 'commits': []}
+            if commit_response.status_code in [200, 304]:
+                commits = commit_response.json()
+                for commit in commits:
+                    sha = commit['sha']
+                    message = commit['commit']['message']
+                    author = commit['commit']['author']['name']
+                    parents = [i['sha'] for i in commit['parents']]
+                    for branch in tree:
+                        if sha == tree[branch]['sha'] or sha in [i for i in tree[branch]['commits'][-1].get('parents', '')]:
+                            tree[branch]['commits'].append({'sha': sha, 'message': message, 'author': author, 'parents': parents})
+                return True, tree
+            return False, '提交获取失败，原因：' + commit_response.json().get('message', '未知')
+        return False, '分支获取失败，原因：' + branch_response.json().get('message', '未知')
+    except Exception as e:
+        raise e
+        logging.error(e)
+        return False, str(e)
+
 # 从CMakeList.txt中获取游戏版本
 def getVersionFromPath(path: str) -> str:
     try:
@@ -347,10 +387,14 @@ def getGameServerStat(server_path: str) -> [bool, str]:
         logging.debug(f'读取数据库{db_file}')
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
-        # 查询今日日活
-        cursor.execute("SELECT count(*) FROM usergameinfo WHERE date(lastLoginTime,'unixepoch','localtime') >= date('now','localtime','start of day') AND date(lastLoginTime,'unixepoch','localtime') < date('now','localtime','start of day','+1 days');")
+        # 查询每日日活
+        cursor.execute("SELECT count(*) FROM usergameinfo WHERE strftime('%Y%m%d', lastLoginTime, 'unixepoch', 'localtime') = strftime('%Y%m%d', 'now', 'localtime');")
         daily_active_result = cursor.fetchone()
         daily_active = daily_active_result[0] if len(daily_active_result) else 0
+        # 查询每月月活
+        cursor.execute("SELECT count(*) FROM usergameinfo WHERE strftime('%Y%m', lastLoginTime, 'unixepoch', 'localtime') = strftime('%Y%m', 'now', 'localtime');")
+        month_active_result = cursor.fetchone()
+        month_active = month_active_result[0] if len(month_active_result) else 0
         # 查询玩家胜率
         cursor.execute('SELECT * FROM playerWinRate;')
         player_win_rate_result = cursor.fetchall()
@@ -390,7 +434,7 @@ def getGameServerStat(server_path: str) -> [bool, str]:
         cursor.close()
         conn.close()
 
-        statistics_dict = {"daily_active": daily_active, "player_win_rate": player_win_rate, "general_win_rate": general_win_rate}
+        statistics_dict = {"daily_active": daily_active, "month_active": month_active, "player_win_rate": player_win_rate, "general_win_rate": general_win_rate}
         return True, statistics_dict
     except Exception as e:
         logging.error(f'读取数据库{db_file}发生错误：{e}')
@@ -493,7 +537,7 @@ def getRoomList(name: str, session_type: str, path: str) -> dict:
                 room_dict[int(index)] = name
     return room_dict
 
-# 获取指定服务器扩充包
+# 获取指定服务器拓展包
 def getPackList(path: str) -> dict:
     pack_dict = getPackListFromDir(os.path.join(path, 'packages'))
     trans_dict = config.custom_trans
@@ -520,7 +564,7 @@ def getPackList(path: str) -> dict:
                 pack_dict[name]['name'] = trans_dict.get(name, name)
         return pack_dict
     except Exception as e:
-        logging.error(f'读取扩充包数据库发生错误：{e}')
+        logging.error(f'读取拓展包数据库发生错误：{e}')
         return pack_dict
 
 # 向指定服务器封禁玩家

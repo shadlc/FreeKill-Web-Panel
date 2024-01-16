@@ -654,6 +654,7 @@ footer {
     color: field;
     font-size: large;
     border-radius: 0.3rem;
+    justify-content: center;
 }
 .terminal-cover::after {
     content: " ";

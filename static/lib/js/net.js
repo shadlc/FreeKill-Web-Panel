@@ -17,8 +17,8 @@ async function get(url, callback) {
   }).then(data => callback(data))
     .catch(error => {
       showDialog(error, '请求出错');
-              callback();
-        });
+      callback();
+  });
 }
 
 // POST Method
@@ -38,10 +38,10 @@ async function post(url, data, callback) {
       });
     }
   }).then(data => callback(data))
-    .catch(error => {
-      showDialog(error, '请求出错');
-              callback();
-        });
+  .catch(error => {
+    showDialog(error, '请求出错');
+    callback();
+  });
 }
 
 // 获取服务器列表
@@ -168,12 +168,12 @@ export function getServerTransTable(name, callback, base_url='') {
   get(base_url + 'v1/trans_table?name='+name, callback);
 }
 
-// 获取指定Git仓库的历史
+// 获取指定Git仓库的提交历史
 export function getPackGitTree(url, callback, base_url='') {
   get(base_url + 'v1/get_git_tree?url='+url, callback);
 }
 
-// 更新指定服务器扩展包到指定版本
+// 更新指定服务器拓展包到指定版本
 export function setPackVersion(server_name, pack_code, pack_hash, callback, base_url='') {
   let data = {'name': server_name, 'code': pack_code, 'hash': pack_hash};
   post(base_url + 'v1/set_pack_version', data, callback);

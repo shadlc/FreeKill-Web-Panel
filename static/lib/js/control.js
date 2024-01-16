@@ -64,7 +64,7 @@ window.onload = function() {
     player_list_refresh_btn.style.cursor = 'not-allowed';
     setTimeout(()=>{player_list_refresh_btn.style.animation = '';}, 1200);
     getPlayerListInfo(server_name, (data)=>{
-      if(data.retcode != 0) {
+      if(data?.retcode != 0) {
         showDialog(data?.msg, '提示');
         return;
       }
@@ -89,7 +89,7 @@ window.onload = function() {
     room_list_refresh_btn.style.cursor = 'not-allowed';
     setTimeout(()=>{room_list_refresh_btn.style.animation = '';}, 1200);
     getRoomListInfo(server_name, (data)=>{
-      if(data.retcode != 0) {
+      if(data?.retcode != 0) {
         showDialog(data?.msg, '提示');
         return;
       }
@@ -101,7 +101,7 @@ window.onload = function() {
 
   setTimeout(()=>{
     getLatestVersion((data)=>{
-      if(data.retcode != 0) {
+      if(data?.retcode != 0) {
         showDialog(data?.msg, '提示');
       }
       document.getElementById('latest_version').innerHTML = data.data.version;
@@ -112,8 +112,10 @@ window.onload = function() {
 // 刷新服务器详细信息
 function refreshDetails() {
   getDetailInfo(server_name, (data)=>{
-    if(data.retcode != 0) {
-      showDialog(data?.msg, '提示');
+    if(data?.retcode != 0) {
+      if(data?.msg) {
+        showDialog(data?.msg, '提示');
+      }
       return;
     }
     let info = data.data;
@@ -186,7 +188,7 @@ async function refreshRoomList(room_list) {
   }
 }
 
-// 刷新扩充包列表
+// 刷新拓展包列表
 async function refreshPackList(pack_list) {
   let list_div = document.querySelector('#pack_list .list-content');
   list_div.innerHTML = '';
@@ -238,7 +240,7 @@ async function refreshPackList(pack_list) {
     <div class="capsule-box pack"`+style+` data-code=`+code+` data-enable=`+enabled+`>
         <details>
           <summary>
-            <i class="bi" title="扩展包名">&#xF7D3;</i>
+            <i class="bi" title="拓展包名">&#xF7D3;</i>
             <span title="`+name+`">`+name+' ('+code+')'+`</span>
             <badge class="disabled">未启用</badge>
             `+badge+`
@@ -254,7 +256,7 @@ async function refreshPackList(pack_list) {
             <span title="`+hash+`">`+hash+`</span>
           </div>
           <div `+info_style+`>
-            <div class="btn package-change-btn">更新扩展包版本</div>
+            <div class="btn package-change-btn">更新拓展包版本</div>
           </div>
           <div style="display:flex;flex-wrap:wrap;">`+packs+`</div>
         </details>
@@ -269,27 +271,28 @@ async function refreshPackList(pack_list) {
   }
 }
 
-// 更改扩充包版本
+// 更改拓展包版本
 function changePackVersion(element, code, name, url, hash) {
   showProcessingBox(
-    '获取扩充包<'+name+'('+code+')>版本信息中...',
+    '获取拓展包<'+name+'('+code+')>版本信息中...',
     '提示',
     (pre, final_callback)=>{
       getPackGitTree(url, (data)=>{
         if(data?.retcode == 0) {
-            pre.innerHTML = data?.data;
+            pre.innerHTML = JSON.stringify(data?.data);
+            final_callback(true);
             // TODO
             // setPackVersion(server_name, pack_code, pack_hash, (data)=>{
             //   if(data?.retcode == 0) {
             //     final_callback(true);
             //   } else {
             //     final_callback(false);
-            //     showDialog(data?.msg);
+            //     if(data?.msg) showDialog(data?.msg);
             //   }
             // }, base_url_slash);
         } else {
           final_callback(false);
-          showDialog(data?.msg);
+          if(data?.msg) showDialog(data?.msg);
         }
       }, base_url_slash);
     }
@@ -338,10 +341,10 @@ socket.on('perf', function(data) {
   }
 });
 socket.on('disconnect', () => {
-  cover.style.display = 'inherit';
+  cover.style.display = 'flex';
 });
 socket.on('connect_error', function() {
-  cover.style.display = 'inherit';
+  cover.style.display = 'flex';
 });
 
 // 监控命令输入框的按键，并实现指令历史记录
@@ -378,8 +381,8 @@ terminal_input.addEventListener('keydown', function(e) {
         server_name,
         terminal_input.value,
         (data)=>{
-          if(data.retcode != 0) {
-            showDialog(data?.msg);
+          if(data?.retcode != 0) {
+            if(data?.msg) showDialog(data?.msg);
           }
           terminal_input.value = '';
         }, base_url_slash
@@ -412,7 +415,7 @@ document.getElementById('start_btn').addEventListener('click', ()=>{
         window.location.href = base_url_slash + 'control/' + data.data.name;
       }, 3000);
     } else {
-      showDialog(data?.msg);
+      if(data?.msg) showDialog(data?.msg);
       refreshDetails();
     }
   }, base_url_slash);
@@ -432,7 +435,7 @@ document.getElementById('stop_btn').addEventListener('click', ()=>{
           window.location.href = base_url_slash;
         });
       }
-      showDialog(data?.msg);
+      if(data?.msg) showDialog(data?.msg);
       refreshDetails();
     }, base_url_slash);
   });
@@ -451,7 +454,7 @@ document.getElementById('restart_btn').addEventListener('click', ()=>{
       '提示',
       (pre, final_callback)=>{
         stopServer(server_name, (data)=>{
-          if(data?.retcode == 0 || data.code == 405) {
+          if(data?.retcode == 0 || data?.code == 405) {
             pre.innerHTML += '\n' + data?.msg;
             startServer(server_name, (data)=>{
               if(data?.retcode == 0) {
@@ -471,7 +474,7 @@ document.getElementById('restart_btn').addEventListener('click', ()=>{
             }, base_url_slash);
           } else {
             final_callback(false);
-            showDialog(data?.msg);
+            if(data?.msg) showDialog(data?.msg);
           }
         }, base_url_slash);
       }
@@ -508,7 +511,7 @@ document.getElementById('backup_btn').addEventListener('click', ()=>{
             final_callback(true);
           } else {
             final_callback(false);
-            showDialog(data?.msg);
+            if(data?.msg) showDialog(data?.msg);
           }
         }, base_url_slash);
       }
@@ -529,7 +532,8 @@ document.getElementById('statistics_btn').addEventListener('click', ()=>{
         getServerStatistics(server_name, (data)=>{
           if(data?.retcode == 0) {
             pre.classList.add('center');
-            pre.innerHTML = '<b>服务器今日活跃人数：' + data?.data.daily_active + '</b>';
+            pre.innerHTML = '<b>今日活跃人数：' + data?.data.daily_active + '</b><br>';
+            pre.innerHTML += '<b>本月活跃人数：' + data?.data.month_active + '</b>';
             let hr = document.createElement("hr");
             hr.style.width = '90%';
             pre.appendChild(hr);
@@ -571,7 +575,7 @@ document.getElementById('statistics_btn').addEventListener('click', ()=>{
             final_callback(true);
           } else {
             final_callback(false);
-            showDialog(data?.msg);
+            if(data?.msg) showDialog(data?.msg);
           }
         }, base_url_slash);
       }, base_url_slash);
@@ -586,7 +590,7 @@ document.getElementById('port_config_btn').addEventListener('click', ()=>{
     '端口修改',
     (port)=>{
       modifyServerPort(server_name, port, (data)=>{
-        showDialog(data?.msg);
+        if(data?.msg) showDialog(data?.msg);
         refreshDetails();
       }, base_url_slash)
     }
@@ -609,13 +613,13 @@ document.getElementById('config_btn').addEventListener('click', ()=>{
             data.data.config,
             (config)=>{
               setServerConfig(server_name, config, (data)=>{
-                showDialog(data?.msg);
+                if(data?.msg) showDialog(data?.msg);
               }, base_url_slash)
             }
           );
         } else {
           final_callback(false);
-          showDialog(data?.msg);
+          if(data?.msg) showDialog(data?.msg);
         }
       }, base_url_slash);
     }

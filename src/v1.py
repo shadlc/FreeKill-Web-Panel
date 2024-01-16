@@ -5,7 +5,7 @@ import time
 from flask import Response
 from flask_classful import FlaskView, route, request
 
-from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, backupGameServer, getGameServerStat, getGameTransTable, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect, getSessionPid
+from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, backupGameServer, getGameServerStat, getGameTransTable, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect, getSessionPid, getGitTree
 from src.game_server import Server
 from src.controller import Controller
 from src.utils import config
@@ -304,7 +304,7 @@ class V1API(FlaskView):
                 if result:
                     return restful(200, '', data)
                 else:
-                    return restful(500, f'获取服务器<{server_name}>统计数据失败\n错误原因：{data}')
+                    return restful(500, f'获取服务器<{server_name}>统计数据失败，原因：<br>{data}')
 
         return restful(404, '无法找到该服务器')
 
@@ -318,6 +318,7 @@ class V1API(FlaskView):
             if server.name == server_name:
                 # TODO
                 return restful(500, '暂未实现')
+                # update packages set hash=18cda624145787e26cb367485722de4966bcea3e where name=VslTest;
                 # result, data = getGameServerStat(server.path)
                 # if result:
                 #     return restful(200, '', data)
@@ -342,7 +343,10 @@ class V1API(FlaskView):
     def get_git_tree(self):
         git_url = request.args.get('url', '')
         if git_url:
-            # TODO
-            return restful(500, '暂未实现');
+            result, data = getGitTree(git_url)
+            if result:
+                return restful(200, '', data)
+            else:            
+                return restful(400, f'获取拓展包失败！原因：<br>{data}')
 
         return restful(404, '无法解析该请求')

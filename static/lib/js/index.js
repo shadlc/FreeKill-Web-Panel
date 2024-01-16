@@ -138,14 +138,14 @@ function initServerToggleBtn() {
             if(data?.retcode == 0) {
               document.querySelector('#server'+server_pid).remove();
             }
-            showDialog(data?.msg);
+            if(data?.msg) showDialog(data?.msg);
             refresh_servers();
           });
         } else if(span.innerText.includes('停止')) {
           showDialog('你真的要停止服务器<'+server_name+'>吗？', '警告',
           ()=>{
             stopServer(server_name, (data)=>{
-            showDialog(data?.msg);
+            if(data?.msg) showDialog(data?.msg);
             refresh_servers();
           });})
         } else if(span.innerText.includes('删除')) {
@@ -155,7 +155,7 @@ function initServerToggleBtn() {
             if(data?.retcode == 0) {
                 document.querySelector('#server'+server_pid).remove();
             }
-            showDialog(data?.msg);
+            if(data?.msg) showDialog(data?.msg);
             refresh_servers();
           });})
         }
