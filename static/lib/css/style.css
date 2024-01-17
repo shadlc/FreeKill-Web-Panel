@@ -249,6 +249,7 @@ footer {
     display: inline-block;
     width: fit-content;
     height: fit-content;
+    min-width: 2rem;
     text-align: center;
     padding: 0.2rem 0.5rem;
     margin: 0.2rem;
@@ -258,16 +259,17 @@ footer {
     transform-origin: 50% 50%;
     transition: all 0.2s ease;
 }
-.btn:hover:not(:disabled) {
+.btn:hover:not([disabled]) {
     cursor: pointer;
 }
-.btn:active:not(:disabled) {
+.btn:active:not([disabled]) {
     transform: scale(0.95);
 }
 .btn:focus {
     background: rgba(0, 0, 0, 0.15);
 }
-.btn:disabled {
+.btn[disabled] {
+    opacity: 0.5;
     cursor: not-allowed;
 }
 .btn-shadow {
@@ -451,16 +453,16 @@ footer {
     font-size: 2rem;
 }
 
-.capsule-box {
+.capsule {
     display: flex;
     flex-direction: row;
-    align-items: center;
+    align-items: stretch;
     width: fit-content;
     border: 2px solid;
     border-radius: 0.5rem;
     margin: 0.2rem;
 }
-.capsule-box>* {
+.capsule>* {
     position: relative;
     display: flex;
     align-items: center;
@@ -469,17 +471,17 @@ footer {
     text-align: center;
     word-wrap: anywhere;
 }
-.capsule-box>span {
+.capsule>span {
     border-left: 2px solid;
     border-right: 2px solid;
 }
-.capsule-box>span:last-child {
+.capsule>span:last-child {
     border-right: none;
 }
-.capsule-box>div {
+.capsule>div {
     border-bottom: 2px solid;
 }
-.capsule-box>div:last-child {
+.capsule>div:last-child {
     border-bottom: none;
 }
 .pack[data-enable="0"] {
@@ -530,7 +532,7 @@ footer {
 .server-info span {
     font-weight: bold;
 }
-.server-info .capsule-box {
+.server-info .capsule {
     margin: 0.1rem 0;
 }
 .server-link {
@@ -792,6 +794,51 @@ footer {
     top: 0;
     font-weight: bold;
     user-select: none;
+}
+
+#git_tree {
+    display: flex;
+    border: 2px solid;
+    border-radius: 0.5rem;
+    margin: 0.5rem;
+    padding: 0.5rem;
+    flex-direction: column;
+    align-items: center;
+}
+#git_nav {
+    display: inline-flex;
+    border: 2px solid;
+    border-radius: 0.5rem 0.5rem 0 0;
+    border-bottom: none;
+    margin: 0 1rem;
+    padding: 0;
+}
+#git_nav li {
+    display: inline;
+    cursor: pointer;
+    border-right: 2px solid;
+    padding: 0 0.2rem;
+    opacity: 0.5;
+}
+#git_nav li.active {
+    opacity: 1;
+}
+#git_nav li:last-child {
+    border-right: none;
+}
+#git_content {
+    border: 2px solid;
+    border-radius: 0.5rem;
+    padding: 0.2rem;
+}
+.commit_page {
+    display: none;
+}
+.commit_page.active {
+    display: unset;
+}
+.commit_page>* {
+    width: auto;
 }
 
 @media (max-width: 800px) {

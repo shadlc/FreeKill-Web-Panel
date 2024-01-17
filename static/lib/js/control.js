@@ -52,7 +52,7 @@ window.onload = function() {
   // 对玩家列表刷新按钮进行点击监听
   let player_list_refresh_btn = document.querySelector('#player_list .list-title .btn');
   player_list_refresh_btn.addEventListener('click', ()=>{
-    if(player_list_refresh_btn.style.cursor == 'not-allowed') {
+    if(player_list_refresh_btn.hasAttribute('disabled')) {
       return;
     }
     else if(!handled && session_type != 'tmux') {
@@ -60,8 +60,7 @@ window.onload = function() {
       return;
     }
     player_list_refresh_btn.style.animation = 'rotate 1s';
-    player_list_refresh_btn.style.enabled = false;
-    player_list_refresh_btn.style.cursor = 'not-allowed';
+    player_list_refresh_btn.setAttribute('disabled', '');
     setTimeout(()=>{player_list_refresh_btn.style.animation = '';}, 1200);
     getPlayerListInfo(server_name, (data)=>{
       if(data?.retcode != 0) {
@@ -70,14 +69,14 @@ window.onload = function() {
       }
       let info = data.data;
       refreshPlayerList(info);
-      player_list_refresh_btn.style.cursor = '';
+      player_list_refresh_btn.removeAttribute('disabled');
     }, base_url_slash);
   });
 
   // 对房间列表刷新按钮进行点击监听
   let room_list_refresh_btn = document.querySelector('#room_list .list-title .btn');
   room_list_refresh_btn.addEventListener('click', ()=>{
-    if(room_list_refresh_btn.style.cursor == 'not-allowed') {
+    if(room_list_refresh_btn.hasAttribute('disabled')) {
       return;
     }
     else if(!handled && session_type != 'tmux') {
@@ -85,8 +84,7 @@ window.onload = function() {
       return;
     }
     room_list_refresh_btn.style.animation = 'rotate 1s';
-    room_list_refresh_btn.style.enabled = false;
-    room_list_refresh_btn.style.cursor = 'not-allowed';
+    room_list_refresh_btn.setAttribute('disabled', '');
     setTimeout(()=>{room_list_refresh_btn.style.animation = '';}, 1200);
     getRoomListInfo(server_name, (data)=>{
       if(data?.retcode != 0) {
@@ -95,7 +93,7 @@ window.onload = function() {
       }
       let info = data.data;
       refreshRoomList(info);
-      room_list_refresh_btn.style.cursor = '';
+      room_list_refresh_btn.removeAttribute('disabled');
     }, base_url_slash);
   });
 
@@ -163,7 +161,7 @@ async function refreshPlayerList(player_list) {
   for(let index in player_list) {
     let name = player_list[index]
     let div = `
-    <div class="capsule-box" title="`+name+`">
+    <div class="capsule" title="`+name+`">
         <i class="bi">&#xF4DA;</i>
         <span>`+'['+index+'] '+name+`</span>
     </div>
@@ -179,7 +177,7 @@ async function refreshRoomList(room_list) {
   for(let index in room_list) {
     let name = room_list[index]
     let div = `
-    <div class="capsule-box" title="`+name+`">
+    <div class="capsule" title="`+name+`">
         <i class="bi">&#xF422;</i>
         <span>`+'['+index+'] '+name+`</span>
     </div>
@@ -225,7 +223,7 @@ async function refreshPackList(pack_list) {
         pack_type = '模式包';
       }
       packs += `
-      <div class="capsule-box">
+      <div class="capsule">
         <i class="bi" title="子包名称">&#xF5AF;</i>
         <span title="`+pack_info.name+`">`+pack_info.name+`</span>
         <i class="bi" title="子包代码">&#xF351;</i>
@@ -237,7 +235,7 @@ async function refreshPackList(pack_list) {
     }
 
     let div = `
-    <div class="capsule-box pack"`+style+` data-code=`+code+` data-enable=`+enabled+`>
+    <div class="capsule pack"`+style+` data-code=`+code+` data-enable=`+enabled+`>
         <details>
           <summary>
             <i class="bi" title="拓展包名">&#xF7D3;</i>
@@ -256,7 +254,7 @@ async function refreshPackList(pack_list) {
             <span title="`+hash+`">`+hash+`</span>
           </div>
           <div `+info_style+`>
-            <div class="btn package-change-btn">更新拓展包版本</div>
+            <div class="btn package-change-btn">切换拓展包版本</div>
           </div>
           <div style="display:flex;flex-wrap:wrap;">`+packs+`</div>
         </details>
@@ -264,32 +262,24 @@ async function refreshPackList(pack_list) {
     `;
     list_div.insertAdjacentHTML('BeforeEnd', div);
 
-    document.querySelector('.pack[data-code='+code+'] .package-change-btn').onclick = (e)=>{
-      let parent = e.target.parentNode.parentNode.parentNode;
-      changePackVersion(parent, code, name, url, hash);
+    document.querySelector('.pack[data-code='+code+'] .package-change-btn').onclick = ()=>{
+      changePackVersion(code, name, url, hash);
     };
   }
 }
 
 // 更改拓展包版本
-function changePackVersion(element, code, name, url, hash) {
+function changePackVersion(code, name, url, hash) {
   showProcessingBox(
     '获取拓展包<'+name+'('+code+')>版本信息中...',
-    '提示',
+    '版本列表',
     (pre, final_callback)=>{
       getPackGitTree(url, (data)=>{
         if(data?.retcode == 0) {
-            pre.innerHTML = JSON.stringify(data?.data);
+            pre.classList.add('center');
+            pre.innerHTML = '<b>'+name+'('+code+')最新一百条提交记录</b>';
+            pre.appendChild(createGitList(data?.data, code, hash));
             final_callback(true);
-            // TODO
-            // setPackVersion(server_name, pack_code, pack_hash, (data)=>{
-            //   if(data?.retcode == 0) {
-            //     final_callback(true);
-            //   } else {
-            //     final_callback(false);
-            //     if(data?.msg) showDialog(data?.msg);
-            //   }
-            // }, base_url_slash);
         } else {
           final_callback(false);
           if(data?.msg) showDialog(data?.msg);
@@ -297,6 +287,90 @@ function changePackVersion(element, code, name, url, hash) {
       }, base_url_slash);
     }
   );
+}
+
+// 通过拓展包的Git历史生成可以切换的历史版本列表
+function createGitList(tree, code, hash) {
+
+  // 切换分支
+  function togglePage(self) {
+    let branch = self.target.innerText;
+    document.querySelectorAll('#git_nav li').forEach((e)=>e.classList.remove('active'));
+    self.target.classList.add('active');
+    document.querySelectorAll('.commit_page').forEach((e)=>e.classList.remove('active'));
+    document.getElementById(branch)?.classList.add('active');
+  }
+
+  // 切换拓展包版本
+  function changePackVersion(server_name, pack_code, old_hash, new_hash){
+    let msg = '你真的要为服务器<'+server_name+'>的拓展包从版本<'
+            + old_hash.slice(0, 8)+'>切换到<'+new_hash.slice(0, 8)+'>吗？';
+    showDialog(msg, '警告',
+    ()=>{
+      setPackVersion(server_name, pack_code, new_hash, (data)=>{
+        if(data?.msg) showDialog(data?.msg);
+      }, base_url_slash);
+    });
+  }
+
+  let git_nav = document.createElement('ul');
+  git_nav.id = 'git_nav';
+  let git_content = document.createElement('div');
+  git_content.id = 'git_content';
+
+  for(let branch in tree) {
+    let branch_li = document.createElement('li');
+    branch_li.innerText = branch;
+    if(git_nav.children.length == 0) {
+      branch_li.classList.add('active');
+    }
+    branch_li.onclick = togglePage;
+    git_nav.appendChild(branch_li);
+    let commit_page = document.createElement('div');
+    commit_page.id = branch;
+    commit_page.classList.add('commit_page');
+    if(git_content.children.length == 0) {
+      commit_page.classList.add('active');
+    }
+    for(let i in tree[branch]?.commits) {
+      let commit = tree[branch].commits[i];
+      let message = commit.message;
+      let author = commit.author;
+      let sha = commit.sha;
+      let commit_div = document.createElement('div');
+      commit_div.classList.add('capsule');
+      commit_div.innerHTML = `
+        <i class="bi" title="描述">&#xF251;</i>
+        <span style="flex-grow:1;">`+message+`</span>
+        <i class="bi" title="作者">&#xF4DA;</i>
+        <span style="white-space:nowrap;">`+author+`</span>
+        <i class="bi" title="版本">&#xF69D;</i>
+        <span style="white-space:nowrap;">`+sha.slice(0, 8)+`</span>
+      `;
+      let toggle_div = document.createElement('div');
+      let toggle_btn = document.createElement('div');
+      toggle_btn.classList.add('btn');
+      toggle_btn.innerText = '切换';
+      toggle_btn.dataset.sha = sha;
+      if(hash == sha) {
+        toggle_btn.setAttribute('disabled', '');
+      } else {
+        toggle_btn.onclick = (e)=>{
+          let new_hash = e.target.dataset.sha;
+          changePackVersion(server_name, code, hash, new_hash);
+        };
+      }
+      toggle_div.appendChild(toggle_btn);
+      commit_div.appendChild(toggle_div);
+      commit_page.appendChild(commit_div);
+    }
+    git_content.appendChild(commit_page);
+  }
+  let div = document.createElement('div');
+  div.id = 'git_tree';
+  div.appendChild(git_nav);
+  div.appendChild(git_content);
+  return div;
 }
 
 // 实时监控终端

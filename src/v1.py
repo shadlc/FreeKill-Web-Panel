@@ -309,7 +309,7 @@ class V1API(FlaskView):
         return restful(404, '无法找到该服务器')
 
     @route('set_pack_version', methods=['POST'])
-    def get_git_tree(self):
+    def set_pack_version(self):
         server_name = request.json.get('name', '')
         pack_code = request.json.get('code', '')
         pack_hash = request.json.get('hash', '')

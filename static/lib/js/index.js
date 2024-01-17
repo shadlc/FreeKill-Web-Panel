@@ -38,7 +38,7 @@ export function refresh_servers() {
   refresh_btn.style.animation = 'rotate 1s';
   setTimeout(()=>{refresh_btn.style.animation = '';}, 1200);
   getServerList((data)=>{
-    render_server_list(data.data.list);
+    render_server_list(data?.data.list);
   })
 }
 
@@ -65,7 +65,7 @@ function render_server_list(servers){
                 <p1 class="server-desc">`+info.desc+`</p1>
                 <span class="server-pid">`+info.pid+`</span>
             </a>
-            <div class="capsule-box">
+            <div class="capsule">
                 <i class="bi server-status">&#xF4FF;</i>
                 <span class="server-status">`+info.status+`</span>
                 <i class="bi server-port">&#xF6D5;</i>

@@ -66,6 +66,7 @@ def getGitTree(url: str) -> list:
             branch_url = f'https://api.github.com/repos/{repo}/branches'
         else:
             return False, '不支持此站点的解析'
+
         branch_response = requests.get(branch_url, timeout=10)
         commit_response = requests.get(commit_url, timeout=10)
         if branch_response.status_code in [200, 304]:
@@ -82,13 +83,19 @@ def getGitTree(url: str) -> list:
                     author = commit['commit']['author']['name']
                     parents = [i['sha'] for i in commit['parents']]
                     for branch in tree:
-                        if sha == tree[branch]['sha'] or sha in [i for i in tree[branch]['commits'][-1].get('parents', '')]:
-                            tree[branch]['commits'].append({'sha': sha, 'message': message, 'author': author, 'parents': parents})
+                        if (sha == tree[branch]['sha']
+                            or sha in [i for i in tree[branch]['commits'][-1].get('parents', '')]):
+                            tree[branch]['commits'].append({
+                                'sha': sha,
+                                'message': message,
+                                'author': author,
+                                'parents': parents,
+                            })
                 return True, tree
             return False, '提交获取失败，原因：' + commit_response.json().get('message', '未知')
         return False, '分支获取失败，原因：' + branch_response.json().get('message', '未知')
+
     except Exception as e:
-        raise e
         logging.error(e)
         return False, str(e)
 
@@ -719,10 +726,12 @@ def getPackListFromDir(directory: str) -> dict:
     package_dict = {'vanilla':{'name': '新月杀', 'packs': {}}}
     root_path, pack_dir = os.path.split(directory.rstrip('/'))
     pack_path_list = [f.path for f in os.scandir(directory) if f.is_dir()]
+    trans_dict = config.custom_trans
     for pack_path in pack_path_list:
         pack_name = os.path.basename(pack_path)
         init_file = os.path.join(pack_dir, pack_name, 'init.lua')
-        extension_name, pack_dict, trans_dict = extractExtension(root_path, init_file)
+        extension_name, pack_dict, inner_trans_dict = extractExtension(root_path, init_file)
+        trans_dict.update(inner_trans_dict)
         package = {
             "name": trans_dict.get(extension_name, extension_name),
             "packs": {}
@@ -741,7 +750,7 @@ def getPackListFromDir(directory: str) -> dict:
 def extractExtension(root_path: str, lua_file: str) -> tuple:
     extension_name = ''
     pack_dict = {}
-    trans_dict = {}
+    trans_dict = config.custom_trans
     lua_path = os.path.join(root_path, lua_file)
     if not os.path.exists(lua_path):
         return '', [], {}
