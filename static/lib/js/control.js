@@ -108,10 +108,10 @@ window.onload = function() {
 };
 
 // 刷新服务器详细信息
-function refreshDetails() {
+function refreshDetails(show_error=true) {
   getDetailInfo(server_name, (data)=>{
     if(data?.retcode != 0) {
-      if(data?.msg) {
+      if(data?.msg && show_error) {
         showDialog(data?.msg, '提示');
       }
       return;
@@ -271,14 +271,14 @@ async function refreshPackList(pack_list) {
 // 更改拓展包版本
 function changePackVersion(code, name, url, hash) {
   showProcessingBox(
-    '获取拓展包<'+name+'('+code+')>版本信息中...',
+    '获取拓展包“'+name+'”版本信息中（过于频繁的请求会被限制）...',
     '版本列表',
     (pre, final_callback)=>{
       getPackGitTree(url, (data)=>{
         if(data?.retcode == 0) {
             pre.classList.add('center');
             pre.innerHTML = '<b>'+name+'('+code+')最新一百条提交记录</b>';
-            pre.appendChild(createGitList(data?.data, code, hash));
+            pre.appendChild(createGitList(data?.data, name, code, hash));
             final_callback(true);
         } else {
           final_callback(false);
@@ -290,7 +290,7 @@ function changePackVersion(code, name, url, hash) {
 }
 
 // 通过拓展包的Git历史生成可以切换的历史版本列表
-function createGitList(tree, code, hash) {
+function createGitList(tree, pack_name, pack_code, hash) {
 
   // 切换分支
   function togglePage(self) {
@@ -299,18 +299,6 @@ function createGitList(tree, code, hash) {
     self.target.classList.add('active');
     document.querySelectorAll('.commit_page').forEach((e)=>e.classList.remove('active'));
     document.getElementById(branch)?.classList.add('active');
-  }
-
-  // 切换拓展包版本
-  function changePackVersion(server_name, pack_code, old_hash, new_hash){
-    let msg = '你真的要为服务器<'+server_name+'>的拓展包从版本<'
-            + old_hash.slice(0, 8)+'>切换到<'+new_hash.slice(0, 8)+'>吗？';
-    showDialog(msg, '警告',
-    ()=>{
-      setPackVersion(server_name, pack_code, new_hash, (data)=>{
-        if(data?.msg) showDialog(data?.msg);
-      }, base_url_slash);
-    });
   }
 
   let git_nav = document.createElement('ul');
@@ -352,14 +340,18 @@ function createGitList(tree, code, hash) {
       toggle_btn.classList.add('btn');
       toggle_btn.innerText = '切换';
       toggle_btn.dataset.sha = sha;
-      if(hash == sha) {
-        toggle_btn.setAttribute('disabled', '');
-      } else {
-        toggle_btn.onclick = (e)=>{
-          let new_hash = e.target.dataset.sha;
-          changePackVersion(server_name, code, hash, new_hash);
-        };
-      }
+      toggle_btn.onclick = (e)=>{
+        let new_hash = e.target.dataset.sha;
+        setPackVersion(
+          server_name,
+          pack_name,
+          pack_code,
+          branch,
+          hash,
+          new_hash,
+          base_url_slash)
+        ;
+      };
       toggle_div.appendChild(toggle_btn);
       commit_div.appendChild(toggle_div);
       commit_page.appendChild(commit_div);
@@ -561,11 +553,13 @@ document.getElementById('update_btn').addEventListener('click', ()=>{
   const server_version = document.getElementById('server_version').innerHTML;
   const latest_version = document.getElementById('latest_version').innerHTML;
   if(server_version != latest_version) {
-    updateServer(server_name, base_url_slash);
+    updateServer(server_name, ()=>{
+      refreshDetails(false);
+    }, base_url_slash);
   } else {
     showDialog('服务器已经是最新版本，是否强制更新？', '提示', ()=>{
       updateServer(server_name, ()=>{
-        refreshDetails();
+        refreshDetails(false);
       }, base_url_slash);
     });
   }

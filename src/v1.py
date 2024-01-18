@@ -5,7 +5,7 @@ import time
 from flask import Response
 from flask_classful import FlaskView, route, request
 
-from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, backupGameServer, getGameServerStat, getGameTransTable, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect, getSessionPid, getGitTree
+from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, backupGameServer, getGameServerStat, getGameTransTable, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect, getSessionPid, getGitTree, setPackVersionForServer
 from src.game_server import Server
 from src.controller import Controller
 from src.utils import config
@@ -226,7 +226,7 @@ class V1API(FlaskView):
                     return Response(f'event: message\ndata: 只能在服务器未运行时更新\n\n', mimetype='text/event-stream')
                 return Response(updateGameServer(server_name), mimetype='text/event-stream')
 
-        return restful(404, '无法找到该服务器')
+        return Response('event: message\ndata: 无法找到该服务器\n\n', mimetype='text/event-stream')
 
     @route('config', methods=['GET', 'POST'])
     def config(self):
@@ -308,24 +308,46 @@ class V1API(FlaskView):
 
         return restful(404, '无法找到该服务器')
 
-    @route('set_pack_version', methods=['POST'])
+    @route('set_pack_version', methods=['GET'])
     def set_pack_version(self):
-        server_name = request.json.get('name', '')
-        pack_code = request.json.get('code', '')
-        pack_hash = request.json.get('hash', '')
+        server_name = request.args.get('name', '')
+        pack_code = request.args.get('code', '')
+        pack_branch = request.args.get('branch', '')
+        pack_hash = request.args.get('hash', '')
+        illegal_char = r'([<>:;"/\\\|\?\*\x00-\x1F\x7F\'\`\s])'
+        if match := re.search(illegal_char, server_name):
+            result = match.groups()[0]
+            return Response(
+                f'event: message\ndata: 切换失败，服务器名存在非法字符：<{result}>\n\n',
+                mimetype='text/event-stream'
+            )
+        elif match := re.search(illegal_char, pack_code):
+            result = match.groups()[0]
+            return Response(
+                f'event: message\ndata: 切换失败，包名存在非法字符：<{result}>\n\n',
+                mimetype='text/event-stream'
+            )
+        elif match := re.search(illegal_char, pack_branch):
+            result = match.groups()[0]
+            return Response(
+                f'event: message\ndata: 切换失败，包版本存在非法字符：<{result}>\n\n',
+                mimetype='text/event-stream'
+            )
+        elif match := re.search(illegal_char, pack_hash):
+            result = match.groups()[0]
+            return Response(
+                f'event: message\ndata: 切换失败，包分支存在非法字符：<{result}>\n\n',
+                mimetype='text/event-stream'
+            )
         list = self.controller.getList()
         for server in list:
             if server.name == server_name:
-                # TODO
-                return restful(500, '暂未实现')
-                # update packages set hash=18cda624145787e26cb367485722de4966bcea3e where name=VslTest;
-                # result, data = getGameServerStat(server.path)
-                # if result:
-                #     return restful(200, '', data)
-                # else:
-                #     return restful(500, f'获取服务器<{server_name}>统计数据失败\n错误原因：{data}')
+                return Response(
+                    setPackVersionForServer(server.path, pack_code, pack_branch, pack_hash)
+                    , mimetype='text/event-stream'
+                )
 
-        return restful(404, '无法找到该服务器')
+        return Response('event: message\ndata: 无法找到该服务器\n\n', mimetype='text/event-stream')
 
     @route('check_version', methods=['GET'])
     def check_version(self):

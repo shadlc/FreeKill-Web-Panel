@@ -4,6 +4,7 @@ import sys
 import json
 import time
 import base64
+from click import command
 import psutil
 import socket
 import logging
@@ -29,7 +30,8 @@ hasScreen = None
 # 从指定图片链接获取base64格式的图片数据并返回
 def getImgBase64FromURL(url: str) -> str:
     try:
-        response = requests.get(url, timeout=3)
+        response = requests.get(url, timeout=5)
+        logging.debug(f'请求外部地址: {url}')
         if response.status_code == 200:
             image_data = response.content
             base64_data = 'data:image/png;base64,' + base64.b64encode(image_data).decode('utf-8')
@@ -44,6 +46,7 @@ def getFKVersion() -> str | None:
     try:
         url = config.version_check_url
         response = requests.get(url, timeout=5)
+        logging.debug(f'请求外部地址: {url}')
         if response.status_code == 200:
             version = response.url.split('/').pop()
             return version
@@ -55,6 +58,7 @@ def getFKVersion() -> str | None:
 # 取得指定Git仓库的提交历史
 def getGitTree(url: str) -> list:
     tree = {}
+    content = ''
     try:
         git_url = url.replace('.git', '')
         repo = '/'.join(git_url.split('/')[-2:])
@@ -68,7 +72,9 @@ def getGitTree(url: str) -> list:
             return False, '不支持此站点的解析'
 
         branch_response = requests.get(branch_url, timeout=10)
-        commit_response = requests.get(commit_url, timeout=10)
+        logging.debug(f'请求外部地址: {branch_url}')
+        commit_response = requests.get(commit_url, timeout=20)
+        logging.debug(f'请求外部地址: {commit_url}')
         if branch_response.status_code in [200, 304]:
             branches = branch_response.json()
             for branch in branches:
@@ -92,8 +98,9 @@ def getGitTree(url: str) -> list:
                                 'parents': parents,
                             })
                 return True, tree
-            return False, '提交获取失败，原因：' + commit_response.json().get('message', '未知')
-        return False, '分支获取失败，原因：' + branch_response.json().get('message', '未知')
+
+            return False, commit_response.text
+        return False, branch_response.text
 
     except Exception as e:
         logging.error(e)
@@ -351,7 +358,13 @@ def updateGameServer(server_name: str) -> str:
         && ([ -f FreeKill ] || ln -s build/FreeKill)
     '''
     logging.debug(f' >>> 独立进程   执行指令' + update_cmd.replace('\n', '').replace('    ',''))
-    process = subprocess.Popen(update_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, universal_newlines=True)
+    process = subprocess.Popen(
+        update_cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        shell=True,
+        universal_newlines=True
+    )
     while True:
         output = process.stdout.readline()
         if output:
@@ -388,6 +401,7 @@ def backupGameServer(server_path: str) -> [bool, str]:
     except Exception as e:
         return False, f'失败原因：{e}'
 
+# 获取服务器统计信息
 def getGameServerStat(server_path: str) -> [bool, str]:
     try:
         db_file = os.path.join(server_path, 'server/users.db')
@@ -798,3 +812,52 @@ def extractExtension(root_path: str, lua_file: str) -> tuple:
         if trans: trans_dict.update(trans)
         if packs: pack_dict.update(packs)
     return extension_name, pack_dict, trans_dict
+
+# 为指定服务器的指定扩展包检出到指定版本
+def setPackVersionForServer(server_path: str, pack_code: str, pack_branch: str, pack_hash: str) -> str:
+    try:
+        pack_path = os.path.join(server_path, 'packages', pack_code)
+        db_file = os.path.join(server_path, 'packages/packages.db')
+        logging.debug(f'读取数据库 {db_file}')
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM packages')
+        pack_list: list[tuple] = cursor.fetchall()
+        db_pack_dict = {pack[0]: pack[1:] for pack in pack_list}
+        if pack_code in db_pack_dict:
+            now_hash = db_pack_dict[pack_code][1]
+            print(now_hash, pack_hash)
+            if now_hash == pack_hash:
+                cursor.close()
+                conn.close()
+                yield f'event: message\ndata: <span class="red">切换失败，无法切换到当前版本</span>\n\n'
+                return
+            checkout_cmd = \
+                f'cd {pack_path} && git reset --hard 2>&1 && git checkout {pack_branch} 2>&1' \
+                + f' && git fetch 2>&1 && git -c advice.detachedHead=false checkout {pack_hash} 2>&1'
+            logging.debug(f' >>> 独立进程   执行指令' + checkout_cmd)
+            process = subprocess.Popen(
+                checkout_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                shell=True,
+                universal_newlines=True
+            )
+            while True:
+                output = process.stdout.readline()
+                if output:
+                    yield f'event: message\ndata: {output}\n\n'
+                elif process.poll() is not None:
+                    if process.poll() == 0:
+                        cursor.execute(f'''UPDATE packages SET hash='{pack_hash}' WHERE name='{pack_code}'; ''')
+                        conn.commit()
+                        yield f'event: message\ndata: <br>切换成功，请刷新此页面更新展示\n\n'
+                    else:
+                        yield f'event: message\ndata: <span class="red">服务器更新失败，错误码：{process.poll()}</span><br>\n\n'
+                    cursor.close()
+                    conn.close()
+                    return
+    except Exception as e:
+        raise e
+        logging.error(f'读取拓展包数据库发生错误：{e}')
+        yield f'event: message\ndata: <span class="red">切换失败，读取拓展包数据库发生错误：{e}</span><br>\n\n'

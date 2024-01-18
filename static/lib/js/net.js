@@ -38,9 +38,9 @@ async function post(url, data, callback) {
       });
     }
   }).then(data => callback(data))
-  .catch(error => {
-    showDialog(error, '请求出错');
-    callback();
+    .catch(error => {
+      showDialog(error, '请求出错');
+      callback();
   });
 }
 
@@ -91,7 +91,7 @@ export function updateServer(name, callback, base_url='') {
     ()=>{
       showProcessingBox(
         '更新服务器中...',
-        '提示',
+        '版本更新',
         (pre, final_callback)=>{
           let eventSource = new EventSource(base_url + 'v1/update_server?name='+name);
           eventSource.onmessage = (event)=>{
@@ -101,7 +101,34 @@ export function updateServer(name, callback, base_url='') {
           eventSource.onerror = ()=>{
               eventSource.close();
               final_callback(true);
-              callback();
+              if(typeof callback === 'function') callback();
+          };
+        }
+      );
+    }
+  );
+}
+
+// 更新指定服务器拓展包到指定版本
+export function setPackVersion(server_name, pack_name, pack_code, branch, old_hash, new_hash, base_url){
+  let msg = '你真的要为“'+server_name+'”的拓展包“'+pack_name+'”从版本'
+          +old_hash.slice(0, 8)+'切换到'+new_hash.slice(0, 8)+'吗？';
+  showDialog(msg, '警告',
+    ()=>{
+      showProcessingBox(
+        '切换拓展包“'+pack_name+'”的版本中...',
+        '拓展包版本切换',
+        (pre, final_callback)=>{
+          let eventSource = new EventSource(base_url + 'v1/set_pack_version?'
+              +'name='+server_name+'&code='+pack_code+'&branch='+branch+'&hash='+new_hash);
+          eventSource.onmessage = (event)=>{
+            pre.innerHTML += '\n'+event.data;
+            pre.scrollTop = pre.scrollHeight - pre.clientHeight;
+          };
+          eventSource.onerror = ()=>{
+              eventSource.close();
+              final_callback(true);
+              if(typeof callback === 'function') callback();
           };
         }
       );
@@ -171,10 +198,4 @@ export function getServerTransTable(name, callback, base_url='') {
 // 获取指定Git仓库的提交历史
 export function getPackGitTree(url, callback, base_url='') {
   get(base_url + 'v1/get_git_tree?url='+url, callback);
-}
-
-// 更新指定服务器拓展包到指定版本
-export function setPackVersion(server_name, pack_code, pack_hash, callback, base_url='') {
-  let data = {'name': server_name, 'code': pack_code, 'hash': pack_hash};
-  post(base_url + 'v1/set_pack_version', data, callback);
 }

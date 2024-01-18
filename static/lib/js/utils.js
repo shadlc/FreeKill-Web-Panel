@@ -34,7 +34,7 @@ export function showDialog(msg, title='提示', callback=null, pre=false) {
       </div>
     </div>
   </div>
-  `
+  `;
   document.body.insertAdjacentHTML('BeforeEnd', msg_div);
   if (pre) {
     document.querySelectorAll('#msg_dialog p1').forEach((e)=>e.style.whiteSpace = 'pre-wrap');
@@ -44,43 +44,45 @@ export function showDialog(msg, title='提示', callback=null, pre=false) {
 
 // 弹出处理框
 export function showProcessingBox(msg, title='处理中', process=null) {
+  let count = document.querySelectorAll('.modal').length;
   let box_div = `
-  <div id="process_dialog" class="modal">
+  <div id="process_dialog_`+count+`" class="modal">
     <div class="modal-dialog">
       <div class="modal-title">
           <h3>`+title+`</h3>
-          <span class="close-btn" onclick="document.querySelectorAll('#process_dialog').forEach((e)=>e.remove());"></span>
+          <span class="close-btn" onclick="document.querySelector('#process_dialog_`+count+`').remove();"></span>
       </div>
       <div class="modal-content center">
           <pre style="overflow:auto;max-height:80vh;max-width:90vw;word-wrap:break-word;white-space:pre-wrap;font-family:serif;margin:0;">`+msg+`</pre>
       </div>
       <div class="modal-footer">
           <i id="processing_icon" class="bi rotate"><b>&#xF130;</b></i>
-          <input id="process_confirm_btn" class="btn hide" type="button" value="确定" onclick="document.querySelectorAll('#process_dialog').forEach((e)=>e.remove());" />
+          <input id="process_confirm_btn" class="btn hide" type="button" value="确定" onclick="document.querySelector('#process_dialog_`+count+`').remove();" />
       </div>
     </div>
   </div>
   `
   document.body.insertAdjacentHTML('BeforeEnd', box_div);
-  let pre = document.querySelector('#process_dialog pre');
+  let pre = document.querySelector('#process_dialog_'+count+' pre');
   process(pre, (result)=>{
     if(result) {
-      document.getElementById('processing_icon').remove();
-      document.getElementById('process_confirm_btn').classList.remove('hide');
+      document.querySelector('#process_dialog_'+count+' #processing_icon').remove();
+      document.querySelector('#process_dialog_'+count+' #process_confirm_btn').classList.remove('hide');
     } else {
-      document.querySelectorAll('#process_dialog').forEach((e)=>e.remove());
+      document.querySelector('#process_dialog_'+count).remove();
     }
   })
 }
 
 // 弹出代码修改框
 export function showCodeEditBox(msg, warning='', title='修改', text='', callback=null) {
+  let count = document.querySelectorAll('.modal').length;
   let box_div = `
-  <div id="code_edit_dialog" class="modal">
+  <div id="code_edit_dialog_`+count+`" class="modal">
     <div class="modal-dialog">
       <div class="modal-title">
           <h3>`+title+`</h3>
-          <span class="close-btn" onclick="document.querySelectorAll('#code_edit_dialog').forEach((e)=>e.remove());"></span>
+          <span class="close-btn" onclick="document.querySelector('#code_edit_dialog_`+count+`').remove();"></span>
       </div>
       <div class="modal-content center">
           <p1 style="overflow: auto;">`+msg+`</p1>
@@ -98,12 +100,12 @@ export function showCodeEditBox(msg, warning='', title='修改', text='', callba
   document.getElementById('code_edit_confirm_btn').addEventListener('click', ()=>{
     if(warning) {
         showDialog(warning, '提示', ()=>{
-          callback(document.getElementById('code_edit_box').value);
-          document.querySelectorAll('#code_edit_dialog').forEach((e)=>e.remove());
+          callback(document.querySelector('#code_edit_dialog_'+count+' #code_edit_box').value);
+          document.querySelector('#code_edit_dialog_'+count).remove();
         });
     } else {
-      callback(document.getElementById('code_edit_box').value);
-      document.querySelectorAll('#code_edit_dialog').forEach((e)=>e.remove());
+      callback(document.querySelector('#code_edit_dialog_'+count+' #code_edit_box').value);
+      document.querySelector('#code_edit_dialog_'+count).remove();
     }
   });
 }
