@@ -831,7 +831,7 @@ def setPackVersionForServer(server_path: str, pack_code: str, pack_branch: str, 
                 return
             checkout_cmd = \
                 f'cd {pack_path} && git reset --hard 2>&1 && git checkout {pack_branch} 2>&1' \
-                + f' && git fetch 2>&1 && git -c advice.detachedHead=false checkout {pack_hash} 2>&1'
+                + f' && git pull 2>&1 && git -c advice.detachedHead=false checkout {pack_hash} 2>&1'
             logging.debug(f' >>> 独立进程   执行指令' + checkout_cmd)
             process = subprocess.Popen(
                 checkout_cmd,
