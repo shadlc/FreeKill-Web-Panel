@@ -56,7 +56,7 @@ def getFKVersion() -> str | None:
 
 # 取得指定Git仓库的提交历史
 def getGitTree(url: str) -> list:
-    content = ''
+    tree = {}
     try:
         git_url = url.replace('.git', '')
         repo = '/'.join(git_url.split('/')[-2:])
