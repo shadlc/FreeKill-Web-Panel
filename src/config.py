@@ -42,7 +42,7 @@ class Config:
         try:
             open(config_file)
         except:
-            json.dump(default_config_dict, open(config_file, 'w'), ensure_ascii=False)
+            json.dump(default_config_dict, open(config_file, 'w'), ensure_ascii=False, indent=2)
 
     # 获取指定配置
     def read(self, key: str=None) -> list | dict | str | int | bool:

@@ -4,7 +4,6 @@ import sys
 import json
 import time
 import base64
-from click import command
 import psutil
 import socket
 import logging
@@ -57,7 +56,6 @@ def getFKVersion() -> str | None:
 
 # 取得指定Git仓库的提交历史
 def getGitTree(url: str) -> list:
-    tree = {}
     content = ''
     try:
         git_url = url.replace('.git', '')
@@ -826,7 +824,6 @@ def setPackVersionForServer(server_path: str, pack_code: str, pack_branch: str, 
         db_pack_dict = {pack[0]: pack[1:] for pack in pack_list}
         if pack_code in db_pack_dict:
             now_hash = db_pack_dict[pack_code][1]
-            print(now_hash, pack_hash)
             if now_hash == pack_hash:
                 cursor.close()
                 conn.close()
@@ -851,13 +848,12 @@ def setPackVersionForServer(server_path: str, pack_code: str, pack_branch: str, 
                     if process.poll() == 0:
                         cursor.execute(f'''UPDATE packages SET hash='{pack_hash}' WHERE name='{pack_code}'; ''')
                         conn.commit()
-                        yield f'event: message\ndata: <br>切换成功，请刷新此页面更新展示\n\n'
+                        yield f'event: message\ndata: <br>切换成功，刷新此页面更新展示，重启服务器生效\n\n'
                     else:
                         yield f'event: message\ndata: <span class="red">服务器更新失败，错误码：{process.poll()}</span><br>\n\n'
                     cursor.close()
                     conn.close()
                     return
     except Exception as e:
-        raise e
         logging.error(f'读取拓展包数据库发生错误：{e}')
         yield f'event: message\ndata: <span class="red">切换失败，读取拓展包数据库发生错误：{e}</span><br>\n\n'
