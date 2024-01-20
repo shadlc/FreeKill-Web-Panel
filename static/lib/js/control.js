@@ -600,23 +600,29 @@ document.getElementById('statistics_btn').addEventListener('click', ()=>{
         getServerStatistics(server_name, (data)=>{
           if(data?.retcode == 0) {
             pre.classList.add('center');
+            pre.style.padding = '1rem';
             pre.innerHTML = '<b>今日活跃人数：' + data?.data.daily_active + '</b><br>';
             pre.innerHTML += '<b>本月活跃人数：' + data?.data.month_active + '</b>';
             let hr = document.createElement("hr");
             hr.style.width = '90%';
             pre.appendChild(hr);
-            for(let mode in data?.data.player_win_rate) {
+            let player_win_rate = data?.data.player_win_rate;
+            let general_win_rate = data?.data.general_win_rate;
+            for(let mode in player_win_rate) {
               let mode_title = mode;
               if (mode == '0_all') {
                 mode_title = '全部模式';
+                if(Object.keys(player_win_rate[mode]).length == 0) {
+                  pre.innerHTML += '<span>玩家胜率表为空</span>';
+                  continue;
+                }
               }else if (mode in trans_table) {
                 mode_title = trans_table[mode];
               }
-              pre.style.padding = '1rem';
               pre.appendChild(createTable(
                 '▶玩家胜率表<'+mode_title+'>',
                 ['玩家名', '胜率', '胜场', '输场', '平局', '总计'],
-                data?.data.player_win_rate[mode],
+                player_win_rate[mode],
                 trans_table,
                 false
               ));
@@ -624,10 +630,14 @@ document.getElementById('statistics_btn').addEventListener('click', ()=>{
             hr = document.createElement("hr");
             hr.style.width = '90%';
             pre.appendChild(hr);
-            for(let mode in data?.data.general_win_rate) {
+            for(let mode in general_win_rate) {
               let mode_title = mode;
               if (mode == '0_all') {
                 mode_title = '全部模式';
+                if(Object.keys(general_win_rate[mode]).length == 0) {
+                  pre.innerHTML += '<span>角色胜率表为空</span>';
+                  continue;
+                }
               }else if (mode in trans_table) {
                 mode_title = trans_table[mode];
               }
@@ -635,7 +645,7 @@ document.getElementById('statistics_btn').addEventListener('click', ()=>{
               pre.appendChild(createTable(
                 '▶角色胜率表<'+mode_title+'>',
                 ['角色名', '胜率', '胜场', '输场', '平局', '总计'],
-                data?.data.general_win_rate[mode],
+                general_win_rate,
                 trans_table,
                 false
               ));

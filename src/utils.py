@@ -848,7 +848,7 @@ def setPackVersionForServer(server_path: str, pack_code: str, pack_branch: str, 
                     if process.poll() == 0:
                         cursor.execute(f'''UPDATE packages SET hash='{pack_hash}' WHERE name='{pack_code}'; ''')
                         conn.commit()
-                        yield f'event: message\ndata: <br>切换成功，刷新此页面更新展示，重启服务器生效\n\n'
+                        yield f'event: message\ndata: <br>切换成功，刷新此页面更新展示，<span class="red">重启</span>服务器生效\n\n'
                     else:
                         yield f'event: message\ndata: <span class="red">服务器更新失败，错误码：{process.poll()}</span><br>\n\n'
                     cursor.close()

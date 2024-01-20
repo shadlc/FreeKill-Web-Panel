@@ -1,6 +1,6 @@
 import json
 
-from src.utils import getProcessUptime, getSessionPid, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, startGameServer, isHandledByPid, getServerInfo, getPlayerList, getRoomList, getPackList
+from src.utils import getProcessUptime, getSessionPid, getVersionFromPath, getImgBase64FromURL, getProcPathByPid, isPortBusy, startGameServer, isHandledByPid, getServerFromConfig,getServerInfo, getPlayerList, getRoomList, getPackList
 
 
 class Server:
@@ -94,7 +94,7 @@ class Server:
     def details(self, server_list: list) -> dict:
         self.readConfig()
         self.readPacks()
-        self.handled = isHandledByPid(self.pid)
+        self.handled = self.isHandled()
         info_dict = self.info(server_list)
         info_dict = {
             **info_dict,
@@ -110,7 +110,13 @@ class Server:
             'handled': self.handled,
         }
         return info_dict
-    
+
+    def isHandled(self) -> bool:
+        server_dict = getServerFromConfig()
+        if self.name in server_dict:
+            return True
+        return isHandledByPid(self.pid)
+
     def getPlayerList(self) -> dict:
         if isPortBusy(self.port):
             self.readPlayers()
