@@ -645,7 +645,7 @@ document.getElementById('statistics_btn').addEventListener('click', ()=>{
               pre.appendChild(createTable(
                 '▶角色胜率表<'+mode_title+'>',
                 ['角色名', '胜率', '胜场', '输场', '平局', '总计'],
-                general_win_rate,
+                general_win_rate[mode],
                 trans_table,
                 false
               ));
