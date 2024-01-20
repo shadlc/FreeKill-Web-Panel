@@ -23,7 +23,8 @@
 - **修改月杀服务器参数与配置**
 - **展示玩家列表、房间列表、扩展包列表**
 - **一键备份新月杀服务器**
-- **查询游戏内胜率与日活**
+- **查询游戏内日活、月活与胜率**
+- **对拓展包进行指定版本切换**
 
 
 ## 📸 相关截图
@@ -33,6 +34,9 @@
 </div>
 <div align=center>
 <img src="https://github.com/shadlc/FreeKill-Web-Panel/assets/46913095/e2f7fe7f-21ad-447d-a0ae-052019fc5811" width=70%>
+</div>
+<div align=center>
+<img src="https://github.com/shadlc/FreeKill-Web-Panel/assets/46913095/bc466e42-9345-48df-a72b-88b43aec3c73" width=70%>
 </div>
 
 
