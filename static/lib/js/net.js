@@ -75,7 +75,7 @@ export function updateServer(name, callback, base_url='') {
     <details>
       <summary>更新指令</summary>
       <p>git reset --hard</p>
-      <p>git pull --tags origin master</p>
+      <p>git fetch --tags -f</p>
       <p>latest_tag=$(git describe --tags \`git rev-list --tags --max-count=1\`)</p>
       <p>git checkout $latest_tag</p>
       <p>[ -f include/lua.h ] || cp -r /usr/include/lua5.4/* include</p>

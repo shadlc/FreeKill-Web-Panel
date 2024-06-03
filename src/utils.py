@@ -343,7 +343,7 @@ def updateGameServer(server_name: str) -> str:
         cd {server_path} \
         && echo "正在读取最新版本...\n" \
         && git reset --hard 2>&1 \
-        && git pull --tags origin master 2>&1 \
+        && git fetch --tags -f 2>&1 \
         && latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`) 2>&1 \
         && git checkout $latest_tag 2>&1 \
         && echo "\n正在编译...\n" \
