@@ -35,18 +35,23 @@ window.onload = function() {
 // 刷新服务器列表
 export function refresh_servers() {
   let refresh_btn = document.querySelector('#refresh_btn>*');
+  if (refresh_btn.style.animation) {
+    return;
+  }
   refresh_btn.style.animation = 'rotate 1s';
   setTimeout(()=>{refresh_btn.style.animation = '';}, 1200);
+  document.querySelectorAll('.server-item').forEach((e)=>{
+    e.remove();
+  })
+  document.getElementById('loading').classList.remove('hide');
   getServerList((data)=>{
+    document.getElementById('loading').classList.add('hide');
     render_server_list(data?.data.list);
   })
 }
 
 // 绘制服务器列表
 function render_server_list(servers){
-  document.querySelectorAll('.server-item').forEach((e)=>{
-    e.remove();
-  })
 
   let list_div = document.getElementById('server_list');
   for(let i in servers){

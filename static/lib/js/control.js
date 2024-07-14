@@ -313,24 +313,40 @@ function changePackVersion(code, name, url, hash) {
 function createGitList(tree, pack_code, pack_name, pack_url, hash) {
 
   // 新增提交记录到分支页面
-  function addCommitToPage(page, commit) {
+  function addCommitToPage(page, branch, commit) {
     let message = commit.message;
     let author = commit.author;
     let sha = commit.sha;
+    let date = commit.date;
     let commit_div = document.createElement('div');
     commit_div.classList.add('capsule');
+    commit_div.classList.add('commit-details');
     commit_div.innerHTML = `
-      <i class="bi" title="描述">&#xF251;</i>
-      <span style="flex-grow:1;">`+message+`</span>
-      <i class="bi" title="作者">&#xF4DA;</i>
-      <span style="white-space:nowrap;">`+author+`</span>
-      <i class="bi" title="版本">&#xF69D;</i>
-      <span style="white-space:nowrap;">`+sha.slice(0, 8)+`</span>
+      <div>
+        <div>
+          <i class="bi" title="描述">&#xF251;</i>
+          <span>`+message+`</span>
+        </div>
+        <div>
+          <i class="bi commit-author" title="作者">&#xF4DA;</i>
+          <span class="commit-author">`+author+`</span>
+          <i class="bi commit-date" title="日期">&#xF1E9;</i>
+          <span class="commit-date">`+date+`</span>
+          <i class="bi commit-sha" title="版本">&#xF69D;</i>
+          <span class="commit-sha">`+sha.slice(0, 8)+`</span>
+        </div>
+      </div>
     `;
     let toggle_div = document.createElement('div');
     let toggle_btn = document.createElement('div');
     toggle_btn.classList.add('btn');
-    toggle_btn.innerText = '切换';
+    if (sha == hash) {
+      toggle_btn.style.color = 'white';
+      toggle_btn.style.background = 'black';
+      toggle_btn.innerText = '当前';
+    } else {
+      toggle_btn.innerText = '切换';
+    }
     toggle_btn.dataset.sha = sha;
     toggle_btn.onclick = (e)=>{
       let new_hash = e.target.dataset.sha;
@@ -341,7 +357,17 @@ function createGitList(tree, pack_code, pack_name, pack_url, hash) {
         branch,
         hash,
         new_hash,
-        base_url_slash)
+        ()=>{
+          document.querySelectorAll('.commit_page .btn').forEach((e)=>{
+            if (e.innerText != '当前') return;
+            e.style.color = 'black';
+            e.style.background = 'white';
+            e.innerText = '切换';
+          });
+          e.target.style.color = 'white';
+          e.target.style.background = 'black';
+          e.target.innerText = '当前';
+        }, base_url_slash)
       ;
     };
     toggle_div.appendChild(toggle_btn);
@@ -367,7 +393,7 @@ function createGitList(tree, pack_code, pack_name, pack_url, hash) {
         let commits = data.data;
         for(let i in commits) {
           let commit = commits[i];
-          addCommitToPage(commit_page, commit);
+          addCommitToPage(commit_page, branch, commit);
         }
       } else {
         if(data?.msg) showDialog(data?.msg);
@@ -393,7 +419,7 @@ function createGitList(tree, pack_code, pack_name, pack_url, hash) {
     commit_page.classList.add('commit_page');
     for(let i in tree[branch].commits) {
       let commit = tree[branch].commits[i];
-      addCommitToPage(commit_page, commit);
+      addCommitToPage(commit_page, branch, commit);
     }
     if (tree[branch].commits.length == 0) {
       commit_page.innerHTML = '<i class="bi rotate"><b>&#xF130;</b></i>';

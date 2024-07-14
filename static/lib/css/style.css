@@ -846,10 +846,46 @@ footer {
 .commit_page .btn {
     min-width: 2rem;
 }
+.commit-details>div:nth-child(1) {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
+    border-right: 2px solid;
+    border-bottom: none;
+}
+.commit-details>div:nth-child(1)>div {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 0.2rem;
+}
+.commit-details>div:nth-child(1) span {
+    flex-grow: 1;
+    height: 100%;
+    margin: 0 0.2rem;
+    border-left: 2px solid;
+    border-right: 2px solid;
+}
+.commit-details>div:nth-child(1) span:last-child {
+    border-right: none;
+}
+.commit-details>div:nth-child(1)>div:nth-child(1) {
+    border-bottom: 2px solid;
+}
+.commit-details>div:nth-child(1)>div:nth-child(2) span {
+    white-space: nowrap;
+}
 
 @media (max-width: 800px) {
     .server-item {
         width: 560px;
+    }
+}
+@media (max-width: 500px) {
+    .commit-date {
+        display: none;
     }
 }
 @media (max-width: 600px) {
@@ -893,6 +929,11 @@ footer {
     }
     .terminal {
         padding: 2%;
+    }
+}
+@media (max-width: 380px) {
+    .commit-author {
+        display: none;
     }
 }
 @media (min-width: 1000px) {

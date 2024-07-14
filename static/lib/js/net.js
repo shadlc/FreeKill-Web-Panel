@@ -110,7 +110,7 @@ export function updateServer(name, callback, base_url='') {
 }
 
 // 更新指定服务器拓展包到指定版本
-export function setPackVersion(server_name, pack_name, pack_code, branch, old_hash, new_hash, base_url){
+export function setPackVersion(server_name, pack_name, pack_code, branch, old_hash, new_hash, callback, base_url){
   let msg = '你真的要为“'+server_name+'”的拓展包“'+pack_name+'”从版本'
           +old_hash.slice(0, 8)+'切换到'+new_hash.slice(0, 8)+'吗？';
   showDialog(msg, '警告',
