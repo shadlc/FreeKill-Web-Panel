@@ -262,7 +262,7 @@ async function refreshPackList(pack_list) {
     `;
     list_div.insertAdjacentHTML('BeforeEnd', div);
 
-    document.querySelector('.pack[data-code='+code+'] .package-change-btn').onclick = ()=>{
+    document.querySelector('.pack[data-code="'+code+'"] .package-change-btn').onclick = ()=>{
       changePackVersion(code, name, url, hash);
     };
   }

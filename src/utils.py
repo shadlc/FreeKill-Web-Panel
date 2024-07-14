@@ -618,6 +618,8 @@ def getPackList(path: str) -> dict:
         conn.close()
         db_pack_dict = {pack[0]: pack[1:] for pack in pack_list}
         for name in db_pack_dict:
+            if name == '':
+                continue
             package = {
                 'url': db_pack_dict[name][0],
                 'hash': db_pack_dict[name][1],
@@ -628,6 +630,8 @@ def getPackList(path: str) -> dict:
             else:
                 pack_dict[name] = package
                 pack_dict[name]['name'] = trans_dict.get(name, name)
+            if name == 'freekill-core':
+                pack_dict[name]['enabled'] = 1
         return pack_dict
     except Exception as e:
         logging.error(f'读取拓展包数据库发生错误：{e}')
@@ -782,7 +786,10 @@ def getGameTransTable(directory: str, raw: str = False) -> dict:
 
 def getPackListFromDir(directory: str) -> dict:
     # 寻找所有指定目录下的新月杀扩展包
-    package_dict = {'vanilla':{'name': '新月杀', 'packs': {}}}
+    package_dict = {
+        'vanilla':{'name': '新月杀', 'packs': {}},
+        'freekill-core':{'name': '新月杀内核', 'packs': {}},
+    }
     root_path, pack_dir = os.path.split(directory.rstrip('/'))
     pack_path_list = [f.path for f in os.scandir(directory) if f.is_dir()]
     trans_dict = config.custom_trans

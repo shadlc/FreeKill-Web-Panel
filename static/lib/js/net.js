@@ -100,7 +100,7 @@ export function updateServer(name, callback, base_url='') {
           };
           eventSource.onerror = ()=>{
               eventSource.close();
-              final_callback(true);
+              final_callback(false);
               if(typeof callback === 'function') callback();
           };
         }
