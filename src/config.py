@@ -21,10 +21,10 @@ default_config_dict = {
     'server_dict': {},
 }
 
-# 配置类
-class Config:
 
+class Config:
     def __init__(self) -> None:
+        # 配置类
         self.initConfig()
         self.raw = self.read()
         self.host = self.raw.get('host')
@@ -37,22 +37,23 @@ class Config:
         self.server_dict = self.raw.get('server_dict')
         self.verify()
 
-    # 初始化配置文件
     def initConfig(self):
+        # 初始化配置文件
         try:
             open(config_file)
         except:
             json.dump(default_config_dict, open(config_file, 'w'), ensure_ascii=False, indent=2)
 
-    # 获取指定配置
+
     def read(self, key: str=None) -> list | dict | str | int | bool:
+        # 获取指定配置
         json_data = json.load(open(config_file))
         if key:
             json_data = json.load(open(config_file)).get(key)
         return json_data
 
-    # 保存指定配置文件
     def save(self, key: str, value: list | dict | str | int | bool) -> str:
+        # 保存指定配置文件
         try:
             json_data = json.load(open(config_file))
             json_data[key] = value
@@ -61,8 +62,8 @@ class Config:
             return f'保存配置文件发生错误\n {e}'
         return ''
 
-    # 验证配置文件的完整性
     def verify(self):
+        # 验证配置文件的完整性
         value = None
         if self.host is None:
             key = "host"

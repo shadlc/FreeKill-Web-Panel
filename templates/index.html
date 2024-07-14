@@ -84,7 +84,7 @@
 </body>
     <script type="module" src="lib/js/index.js"></script>
     <script>
-        document.addEventListener('keydown', (e)=>{
+        document.addEventListener('keyup', (e)=>{
         if(e.key == 'Escape') {
           document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());
         } else if(e.key == 'Enter') {
@@ -103,7 +103,7 @@
         document.getElementById("start_cancel_btn").addEventListener("click", ()=>{
           modal.style.display = "none";
         });
-        document.addEventListener("keydown", function(event) {
+        document.addEventListener("keyup", function(event) {
           if (event.key === "Escape") {
             modal.style.display = "none";
           }

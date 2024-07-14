@@ -1,3 +1,4 @@
+from email import header
 import os
 import re
 import sys
@@ -26,8 +27,8 @@ config = Config()
 hasTmux = None
 hasScreen = None
 
-# 从指定图片链接获取base64格式的图片数据并返回
 def getImgBase64FromURL(url: str) -> str:
+    # 从指定图片链接获取base64格式的图片数据并返回
     try:
         response = requests.get(url, timeout=5)
         logging.debug(f'请求外部地址: {url}')
@@ -40,8 +41,8 @@ def getImgBase64FromURL(url: str) -> str:
         logging.error(e)
         return ''
 
-# 取得FreeKill最新版本
 def getFKVersion() -> str | None:
+    # 取得FreeKill最新版本
     try:
         url = config.version_check_url
         response = requests.get(url, timeout=5)
@@ -54,58 +55,104 @@ def getFKVersion() -> str | None:
         logging.error(e)
         return
 
-# 取得指定Git仓库的提交历史
-def getGitTree(url: str) -> list:
+def getGitTree(url: str, token: str = '') -> list:
+    # 取得指定Git仓库的分支列表和主分支提交历史
     tree = {}
     try:
         git_url = url.replace('.git', '')
         repo = '/'.join(git_url.split('/')[-2:])
         if 'gitee.com' in git_url:
-            commit_url = f'https://gitee.com/api/v5/repos/{repo}/commits?per_page=100'
             branch_url = f'https://gitee.com/api/v5/repos/{repo}/branches'
         elif 'github.com' in git_url:
-            commit_url = f'https://api.github.com/repos/{repo}/commits?per_page=100'
             branch_url = f'https://api.github.com/repos/{repo}/branches'
         else:
             return False, '不支持此站点的解析'
-
-        branch_response = requests.get(branch_url, timeout=10)
+        headers = {}
+        if token:
+            branch_url += f'?access_token={token}'
+            headers = {'Authorization': f'Bearer {token}'}
+        branch_response = requests.get(branch_url, timeout=10, headers=headers)
         logging.debug(f'请求外部地址: {branch_url}')
-        commit_response = requests.get(commit_url, timeout=20)
-        logging.debug(f'请求外部地址: {commit_url}')
-        if branch_response.status_code in [200, 304]:
-            branches = branch_response.json()
-            for branch in branches:
-                name = branch['name']
-                sha = branch['commit']['sha']
-                tree[name] = {'sha': sha, 'commits': []}
-            if commit_response.status_code in [200, 304]:
-                commits = commit_response.json()
-                for commit in commits:
-                    sha = commit['sha']
-                    message = commit['commit']['message']
-                    author = commit['commit']['author']['name']
-                    parents = [i['sha'] for i in commit['parents']]
-                    for branch in tree:
-                        if (sha == tree[branch]['sha']
-                            or sha in [i for i in tree[branch]['commits'][-1].get('parents', '')]):
-                            tree[branch]['commits'].append({
-                                'sha': sha,
-                                'message': message,
-                                'author': author,
-                                'parents': parents,
-                            })
-                return True, tree
-
-            return False, commit_response.text
-        return False, branch_response.text
-
+        if branch_response.status_code not in [200, 304]:
+            return False, branch_response.text
+        branches = branch_response.json()
+        for branch in branches:
+            name = branch['name']
+            sha = branch['commit']['sha']
+            tree[name] = {'sha': sha, 'commits': []}
+        commit_result, commits = getBranchCommits(url, token=token)
+        if not commit_result:
+            return False, commits
+        for commit in commits:
+            sha = commit['sha']
+            message = commit['commit']['message']
+            author = commit['commit']['author']['name']
+            date = commit['commit']['author']['date'].split('T')[0]
+            parents = [i['sha'] for i in commit['parents']]
+            for branch in tree:
+                if sha == tree[branch]['sha'] or (
+                        len(tree[branch]['commits']) != 0
+                        and sha in [i for i in tree[branch]['commits'][-1].get('parents', '')]
+                    ):
+                    tree[branch]['commits'].append({
+                        'sha': sha,
+                        'message': message,
+                        'author': author,
+                        'parents': parents,
+                        'date': date,
+                    })
+        return True, tree
     except Exception as e:
         logging.error(e)
         return False, str(e)
 
-# 从CMakeList.txt中获取游戏版本
+def getBranchCommits(url: str, hash: str = '', token: str = '', parse: bool = False) -> list:
+    # 获取指定拓展包指定分支的提交记录
+    try:
+        git_url = url.replace('.git', '')
+        repo = '/'.join(git_url.split('/')[-2:])
+        if 'gitee.com' in git_url:
+            commit_url = f'https://gitee.com/api/v5/repos/{repo}/commits?per_page=100'
+        elif 'github.com' in git_url:
+            commit_url = f'https://api.github.com/repos/{repo}/commits?per_page=100'
+        else:
+            return False, '不支持此站点的解析'
+        if hash:
+            commit_url += f'&sha={hash}'
+        if token:
+            commit_url += f'&access_token={token}'
+        commit_response = requests.get(commit_url, timeout=10, headers={
+            'Authorization': f'Bearer {token}'
+        })
+        logging.info(f'请求外部地址: {commit_url}')
+        if commit_response.status_code not in [200, 304]:
+            return False, commit_response.text
+        raw_commits = commit_response.json()
+        if parse:
+            commits = []
+            for commit in raw_commits:
+                sha = commit['sha']
+                message = commit['commit']['message']
+                author = commit['commit']['author']['name']
+                date = commit['commit']['author']['date'].split('T')[0]
+                parents = [i['sha'] for i in commit['parents']]
+                if sha == hash or (len(commits) != 0 and sha in commits[-1]['parents']):
+                    commits.append({
+                        'sha': sha,
+                        'message': message,
+                        'author': author,
+                        'parents': parents,
+                        'date': date,
+                    })
+            return True, commits
+        return True, raw_commits
+    except Exception as e:
+        logging.error(e)
+        return False, str(e)
+        
+
 def getVersionFromPath(path: str) -> str:
+    # 从CMakeList.txt中获取游戏版本
     try:
         with open(f'{path}/CMakeLists.txt', 'r') as file:
             content = file.read()
@@ -120,8 +167,8 @@ def getVersionFromPath(path: str) -> str:
         logging.error(e)
     return '版本读取异常'
 
-# 运行Bash指令并获取结果
 def runCmd(cmd: str, log=True) -> str:
+    # 运行Bash指令并获取结果
     try:
         stime = time.time()
         comm = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
@@ -139,8 +186,8 @@ def runCmd(cmd: str, log=True) -> str:
         logging.error(f'执行外部指令出错：{e}')
         return ''
 
-# 运行Bash指令并判断是否成功
 def runCmdCorrect(cmd: str, log=True) -> bool:
+    # 运行Bash指令并判断是否成功
     stime = time.time()
     try:
         result = subprocess.run(f'{cmd}', shell=True, capture_output=True, text=True)
@@ -154,8 +201,8 @@ def runCmdCorrect(cmd: str, log=True) -> bool:
         logging.debug(f'执行外部指令不成功：{e}')
         return False
 
-# 从指定PID进程获取其运行时长
 def getProcessUptime(pid: int) -> str:
+    # 从指定PID进程获取其运行时长
     uptime = 0
     try:
         process = psutil.Process(pid)
@@ -164,8 +211,8 @@ def getProcessUptime(pid: int) -> str:
     except psutil.NoSuchProcess:...
     return uptime
 
-# 获取正在运行的FreeKill服务器列表以及其信息
 def getServerList() -> list[str]:
+    # 获取正在运行的FreeKill服务器列表以及其信息
     global hasTmux, hasScreen
     spid_dict = {}
     # 获取tmux列表
@@ -205,8 +252,8 @@ def getServerList() -> list[str]:
             server_list.append([name, pid, port, session_type])
     return server_list
 
-# 根据PID获取该程序所属的Tmux或则Screen的PID
 def getSessionPid(pid: int, recursion: bool=True) -> int:
+    # 根据PID获取该程序所属的Tmux或则Screen的PID
     if pid == 1 or pid == 0:
         return 0
     try:
@@ -225,8 +272,8 @@ def getSessionPid(pid: int, recursion: bool=True) -> int:
     except psutil.NoSuchProcess:...
     return 0
 
-# 根据PID判断该程序是否是FKWP启动的
 def isHandledByPid(pid: int) -> bool:
+#    根据PID判断该程序是否是FKWP启动的
     if pid == 1 or pid == 0:
         return False
     try:
@@ -240,8 +287,8 @@ def isHandledByPid(pid: int) -> bool:
     except psutil.NoSuchProcess:...
     return False
 
-# 通过PID获取程序的执行路径
 def getProcPathByPid(pid: int) -> str:
+    # 通过PID获取程序的执行路径
     try:
         process = psutil.Process(pid)
         path = process.exe()
@@ -251,37 +298,37 @@ def getProcPathByPid(pid: int) -> str:
     except psutil.NoSuchProcess:
         return ''
 
-# 通过PID获取程序的监听端口
 def getProcPortByPid(pid: int) -> int:
+    # 通过PID获取程序的监听端口
     for conn in psutil.net_connections():
         if conn.status == 'LISTEN' and conn.pid == pid:
             return conn.laddr.port
     return 0
 
-# 判断端口号是否是被占用
 def isPortBusy(port: int) -> bool:
+    # 判断端口号是否是被占用
     for conn in psutil.net_connections():
         if conn.status == 'LISTEN' and conn.laddr.port == port:
             return True
     return False
 
-# 判断某文件是否存在
 def isFileExists(path: str) -> bool:
+    # 判断某文件是否存在
     try: open(path)
     except: return False
     return True
 
-# 获取保存的历史服务器列表
 def getServerFromConfig() -> dict:
+    # 获取保存的历史服务器列表
     return config.read('server_dict')
 
-# 保存历史服务器列表
 def saveServerToConfig(server_dict: list[str]) -> str:
+    # 保存历史服务器列表
     config.server_dict = server_dict
     return config.save('server_dict', server_dict)
 
-# 以RESTful的方式进行返回响应
 def restful(code: int, msg: str = '', data: dict = {}) -> None:
+    # 以RESTful的方式进行返回响应
     retcode = 1
     if code == 200:
         retcode = 0
@@ -291,8 +338,8 @@ def restful(code: int, msg: str = '', data: dict = {}) -> None:
             'data': data
     }), code
 
-# 启动服务器,返回PID
 def startGameServer(name: str, port: int, path: str, session_type: str) -> int:
+    # 启动服务器,返回PID
     if session_type == 'tmux':
         command = f''' cd {path}; tmux new -d -s "{name}" "./FreeKill -s {port} 2>&1 | tee ./{config.log_file}" '''
     else:
@@ -309,8 +356,8 @@ def startGameServer(name: str, port: int, path: str, session_type: str) -> int:
     except psutil.NoSuchProcess:...
     return 0
 
-# 停止服务器
 def stopGameServer(name: str, session_type: str) -> bool:
+    # 停止服务器
     if session_type == 'tmux':
         command = f''' tmux send-keys -t "{name}" C-d '''
     else:
@@ -320,8 +367,8 @@ def stopGameServer(name: str, session_type: str) -> bool:
         return True
     return False
 
-# 删除服务器
 def deleteGameServer(server_name: str) -> str:
+    # 删除服务器
     server_dict = getServerFromConfig()
     del_name = ''
     for name in server_dict:
@@ -332,8 +379,8 @@ def deleteGameServer(server_name: str) -> str:
         return saveServerToConfig(server_dict)
     return '服务器已经不存在'
 
-# 更新服务器
 def updateGameServer(server_name: str) -> str:
+    # 更新服务器
     server_path = ''
     server_dict = getServerFromConfig()
     for name in server_dict:
@@ -374,8 +421,8 @@ def updateGameServer(server_name: str) -> str:
                 yield f'event: message\ndata: <span class="red">服务器更新失败，错误码：{process.poll()}</span><br>\n\n'
             return
 
-# 备份服务器
-def backupGameServer(server_path: str) -> [bool, str]:
+def backupGameServer(server_path: str) -> list[bool, str]:
+    # 备份服务器
     try:
         backup_dir = config.backup_directory
         ignore_list: list = [backup_dir] + config.backup_ignore
@@ -399,8 +446,8 @@ def backupGameServer(server_path: str) -> [bool, str]:
     except Exception as e:
         return False, f'失败原因：{e}'
 
-# 获取服务器统计信息
-def getGameServerStat(server_path: str) -> [bool, str]:
+def getGameServerStat(server_path: str) -> list[bool, str]:
+    # 获取服务器统计信息
     try:
         db_file = os.path.join(server_path, 'server/users.db')
         logging.debug(f'读取数据库{db_file}')
@@ -459,8 +506,8 @@ def getGameServerStat(server_path: str) -> [bool, str]:
         logging.error(f'读取数据库{db_file}发生错误：{e}')
         return False, f'{e}'
 
-# 读取游戏配置文件
-def readGameConfig(path: str) -> [bool, str]:
+def readGameConfig(path: str) -> list[bool, str]:
+    # 读取游戏配置文件
     try:
         with open(f'{path}/freekill.server.config.json') as f:
             config_text = f.read()
@@ -468,8 +515,8 @@ def readGameConfig(path: str) -> [bool, str]:
     except Exception as e:
         return False, str(e)
 
-# 写入游戏配置文件
 def writeGameConfig(path: str, config: dict | str) -> str | None:
+    # 写入游戏配置文件
     try:
         if type(config) == str:
             open(f'{path}/freekill.server.config.json', 'w').write(config)
@@ -483,8 +530,8 @@ def writeGameConfig(path: str, config: dict | str) -> str | None:
         logging.error(e)
         return e
 
-# 在指定screen内执行语句，并获取返回值
 def runScreenCmd(name: str, cmd: str, path: str='') -> str:
+    # 在指定screen内执行语句，并获取返回值
     command = command = f' screen -S {name} -X stuff "{cmd}\n" '
     if not path:
         return runCmd(command)
@@ -496,14 +543,14 @@ def runScreenCmd(name: str, cmd: str, path: str='') -> str:
         result = rmSpecialChar(f.read())
     return result
 
-# 在指定tmux内执行语句，并对Tmux窗口进行内容捕获
 def runTmuxCmd(name: str, cmd: str) -> str:
+    # 在指定tmux内执行语句，并对Tmux窗口进行内容捕获
     command = f' tmux send-keys -t {name} "{cmd}" Enter;sleep 0.1;tmux capture-pane -peS - -t {name} 2>&1'
     result = runCmd(command)
     return result
 
-# 使用UDP协议获取指定服务器信息
 def getServerInfo(name: str, port : int) -> list:
+    # 使用UDP协议获取指定服务器信息
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_address = ('127.0.0.1', port)
     try:
@@ -518,8 +565,8 @@ def getServerInfo(name: str, port : int) -> list:
         sock.close()
     return []
 
-# 获取指定服务器内在线玩家列表
 def getPlayerList(name: str, session_type: str, path: str) -> dict:
+    # 获取指定服务器内在线玩家列表
     if session_type == 'tmux':
         captured = runTmuxCmd(name, 'lsplayer')
     else:
@@ -537,8 +584,8 @@ def getPlayerList(name: str, session_type: str, path: str) -> dict:
                 player_dict[int(index)] = name
     return player_dict
 
-# 获取指定服务器内已房间列表
 def getRoomList(name: str, session_type: str, path: str) -> dict:
+    # 获取指定服务器内已房间列表
     if session_type == 'tmux':
         captured = runTmuxCmd(name, 'lsroom')
     else:
@@ -556,8 +603,8 @@ def getRoomList(name: str, session_type: str, path: str) -> dict:
                 room_dict[int(index)] = name
     return room_dict
 
-# 获取指定服务器拓展包
 def getPackList(path: str) -> dict:
+    # 获取指定服务器拓展包
     pack_dict = getPackListFromDir(os.path.join(path, 'packages'))
     trans_dict = config.custom_trans
     try:
@@ -586,8 +633,8 @@ def getPackList(path: str) -> dict:
         logging.error(f'读取拓展包数据库发生错误：{e}')
         return pack_dict
 
-# 向指定服务器封禁玩家
 def banFromServer(server_name: str, player_name: str, session_type: str, path: str) -> bool:
+    # 向指定服务器封禁玩家
     if session_type == 'tmux':
         captured = runTmuxCmd(server_name, f'ban {player_name}')
     else:
@@ -597,8 +644,8 @@ def banFromServer(server_name: str, player_name: str, session_type: str, path: s
         return True
     return False
 
-# 向指定服务器发送消息
 def sendMsgTo(name: str, msg: str, session_type: str, path: str) -> bool:
+    # 向指定服务器发送消息
     if session_type == 'tmux':
         captured = runTmuxCmd(name, f'msg {msg}')
     else:
@@ -608,15 +655,15 @@ def sendMsgTo(name: str, msg: str, session_type: str, path: str) -> bool:
         return True
     return False
 
-# 去除特殊控制字符
 def rmSpecialChar(text: str) -> str:
+    # 去除特殊控制字符
     special_chars = ['[?2004l', '[?2004h', '\x1b[K', '\x1b']
     for char in special_chars:
         text = text.replace(char, '')
     return text
 
-# 获取指定文件倒数行数的文本
 def tailLogNum(file_path: str, num: int) -> str:
+    # 获取指定文件倒数行数的文本
     try:
         with open(file_path) as file:
             lines = file.readlines()
@@ -630,8 +677,8 @@ def tailLogNum(file_path: str, num: int) -> str:
     except:
         return ''
 
-# 根据连接客户端实时获取执行日志
 def tailLog(conn: Connection, sid: str) -> None:
+    # 根据连接客户端实时获取执行日志
     try:
         date = time.strftime('%m/%d %H:%M:%S', time.localtime())
         name = conn.clients[sid].get('name')
@@ -678,15 +725,15 @@ def tailLog(conn: Connection, sid: str) -> None:
     except Exception as e:
         conn.socketio.emit('terminal', {'text': f'{date} FKWP [[0;31mE[0;0m] 读取日志异常: {e}\n'})
 
-# 根据文件名添加额外内容
 def appendFile(path: str, content: str) -> str | None:
+    # 根据文件名添加额外内容
     try:
         open(path, mode='a').write(content)
     except Exception as e:
         return f'写入错误：{e}'
 
-# 持续返回性能参数
 def queryPerf(conn: Connection, sid: str) -> None:
+    # 持续返回性能参数
     try:
         for server_info in getServerList():
             name = conn.clients[sid].get('name')
@@ -704,8 +751,8 @@ def queryPerf(conn: Connection, sid: str) -> None:
         conn.socketio.emit('perf', {'data': {'cpu': '获取异常', 'ram': '获取异常'}})
     ...
 
-# 根据PID返回进程占用的CPU与内存使用量
 def getPerfByPid(pid: int) -> list:
+    # 根据PID返回进程占用的CPU与内存使用量
     cpu_percent = '0.0%'
     memory_info = '0MB'
     if not pid:
@@ -717,8 +764,8 @@ def getPerfByPid(pid: int) -> list:
     except psutil.NoSuchProcess:...
     return f'{cpu_percent}%', memory_info
 
-# 获取指定新月杀目录下的所有扩展包的所有翻译表
 def getGameTransTable(directory: str, raw: str = False) -> dict:
+    # 获取指定新月杀目录下的所有扩展包的所有翻译表
     directory = os.path.join(directory, 'packages')
     root_path, pack_dir = os.path.split(directory.rstrip('/'))
     pack_path_list = [f.path for f in os.scandir(directory) if f.is_dir()]
@@ -733,8 +780,8 @@ def getGameTransTable(directory: str, raw: str = False) -> dict:
             trans_table.update({key: value for key, value in trans_dict.items() if not key.startswith(('~', '@', '#', '$', '^', ':'))})
     return trans_table
 
-# 寻找所有指定目录下的新月杀扩展包
 def getPackListFromDir(directory: str) -> dict:
+    # 寻找所有指定目录下的新月杀扩展包
     package_dict = {'vanilla':{'name': '新月杀', 'packs': {}}}
     root_path, pack_dir = os.path.split(directory.rstrip('/'))
     pack_path_list = [f.path for f in os.scandir(directory) if f.is_dir()]
@@ -758,8 +805,8 @@ def getPackListFromDir(directory: str) -> dict:
                 package_dict['vanilla']['packs'].update(package['packs'])
     return package_dict
 
-# 解析指定目录下的扩展包，返回包名、子包与字典表
 def extractExtension(root_path: str, lua_file: str) -> tuple:
+    # 解析指定目录下的扩展包，返回包名、子包与字典表
     extension_name = ''
     pack_dict = {}
     trans_dict = config.custom_trans
@@ -811,8 +858,8 @@ def extractExtension(root_path: str, lua_file: str) -> tuple:
         if packs: pack_dict.update(packs)
     return extension_name, pack_dict, trans_dict
 
-# 为指定服务器的指定扩展包检出到指定版本
 def setPackVersionForServer(server_path: str, pack_code: str, pack_branch: str, pack_hash: str) -> str:
+    # 为指定服务器的指定扩展包检出到指定版本
     try:
         pack_path = os.path.join(server_path, 'packages', pack_code)
         db_file = os.path.join(server_path, 'packages/packages.db')

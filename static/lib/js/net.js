@@ -197,5 +197,20 @@ export function getServerTransTable(name, callback, base_url='') {
 
 // 获取指定Git仓库的提交历史
 export function getPackGitTree(url, callback, base_url='') {
-  get(base_url + 'v1/get_git_tree?url='+url, callback);
+  let git_token = localStorage.getItem('gitToken');
+  let dest_url = base_url + 'v1/get_git_tree?url='+url;
+  if (git_token) {
+    dest_url += '&token='+git_token; 
+  }
+  get(dest_url, callback);
+}
+
+// 获取指定拓展包指定分支的提交记录
+export function getBranchCommits(url, hash, callback, base_url='') {
+  let git_token = localStorage.getItem('gitToken');
+  let dest_url = base_url + 'v1/get_branch_commits?url='+url+'&hash='+hash;
+  if (git_token) {
+    dest_url += '&token='+git_token; 
+  }
+  get(dest_url, callback);
 }

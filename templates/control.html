@@ -137,7 +137,7 @@
     <script src="../lib/js/socket.io.min.js"></script>  
     <script type="module" src="../lib/js/control.js"></script>
     <script>
-        document.addEventListener('keydown', (e)=>{
+        document.addEventListener('keyup', (e)=>{
           if(e.key == 'Escape') {
               document.querySelectorAll('#msg_dialog').forEach((e)=>e.remove());
           } else if(e.key == 'Enter') {

@@ -830,12 +830,15 @@ footer {
     border: 2px solid;
     border-radius: 0.5rem;
     padding: 0.2rem;
+    min-width: 15rem;
 }
 .commit_page {
     display: none;
 }
 .commit_page.active {
-    display: unset;
+    display: inherit;
+    width: 100%;
+    text-align: center;
 }
 .commit_page>* {
     width: auto;

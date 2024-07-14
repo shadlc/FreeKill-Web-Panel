@@ -121,7 +121,7 @@ export function showTextBox(msg, title='修改', callback=null) {
       </div>
       <div class="modal-content center">
           <p1 style="overflow: auto;">`+msg+`</p1>
-          <input id="text_box" class="text_input" type="text" style="margin-top:0.5rem;text-align:center;"></input>
+          <input id="text_box" class="text_input" type="text" style="margin-top:0.5rem;text-align:center;width:90%;"></input>
       </div>
       <div class="modal-footer">
           <input id="text_confirm_btn" class="btn" type="button" value="确定" />
@@ -239,6 +239,7 @@ export function timeToTimeStamp(time) {
 // 转换BASH颜色为HTML实体
 export function convertBashColor(text) {
   let color_matched = 0;
+  text = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
   text = text.replace(/\[([0-9]{1,2}(;[0-9]{1,2})?)?m/g, (match, patten) => {
     let classes = '';
     if (patten) {

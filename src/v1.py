@@ -5,7 +5,7 @@ import time
 from flask import Response
 from flask_classful import FlaskView, route, request
 
-from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, backupGameServer, getGameServerStat, getGameTransTable, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect, getSessionPid, getGitTree, setPackVersionForServer
+from src.utils import restful, isPortBusy, startGameServer, stopGameServer, deleteGameServer, updateGameServer, backupGameServer, getGameServerStat, getGameTransTable, readGameConfig, writeGameConfig, isFileExists, runTmuxCmd, runScreenCmd, appendFile, runCmdCorrect, getSessionPid, getGitTree, getBranchCommits, setPackVersionForServer
 from src.game_server import Server
 from src.controller import Controller
 from src.utils import config
@@ -364,8 +364,23 @@ class V1API(FlaskView):
     @route('get_git_tree', methods=['GET'])
     def get_git_tree(self):
         git_url = request.args.get('url', '')
+        token = request.args.get('token', '')
         if git_url:
-            result, data = getGitTree(git_url)
+            result, data = getGitTree(git_url, token)
+            if result:
+                return restful(200, '', data)
+            else:            
+                return restful(400, f'获取拓展包失败！原因：<br>{data}')
+
+        return restful(404, '无法解析该请求')
+
+    @route('get_branch_commits', methods=['GET'])
+    def get_branch_commits(self):
+        git_url = request.args.get('url', '')
+        branch = request.args.get('hash', '')
+        token = request.args.get('token', '')
+        if git_url:
+            result, data = getBranchCommits(git_url, branch, token, parse=True)
             if result:
                 return restful(200, '', data)
             else:            

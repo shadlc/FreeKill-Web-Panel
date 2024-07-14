@@ -4,7 +4,7 @@ import { changeScheme, showDialog, showProcessingBox, showTextBox, showCodeEditB
 import { getLatestVersion, executeCmd, getDetailInfo, getPlayerListInfo, getRoomListInfo,
     startServer, stopServer, updateServer, getServerConfig, backupServer, 
     setServerConfig, modifyServerPort, getServerStatistics, getServerTransTable,
-    getPackGitTree, setPackVersion
+    getPackGitTree, setPackVersion, getBranchCommits
 } from './net.js'
 
 // 主题相关
@@ -271,18 +271,38 @@ async function refreshPackList(pack_list) {
 // 更改拓展包版本
 function changePackVersion(code, name, url, hash) {
   showProcessingBox(
-    '获取拓展包“'+name+'”版本信息中（过于频繁的请求会被限制）...',
+    '获取拓展包“'+name+'”版本信息中...',
     '版本列表',
     (pre, final_callback)=>{
       getPackGitTree(url, (data)=>{
         if(data?.retcode == 0) {
             pre.classList.add('center');
             pre.innerHTML = '<b>'+name+'('+code+')最新一百条提交记录</b>';
-            pre.appendChild(createGitList(data?.data, name, code, hash));
+            pre.appendChild(createGitList(data?.data, code, name, url, hash));
             final_callback(true);
         } else {
           final_callback(false);
-          if(data?.msg) showDialog(data?.msg);
+          let msg = data?.msg;
+          if(msg) {
+            if (msg.toLowerCase().includes('rate limit exceeded')) {
+              msg += '<br><br>检测到您的访问已被速率限制，无法正常访问，您也可以在下方输入令牌，以指定身份访问API'
+                  +'(获取令牌: [<a href="https://gitee.com/profile/personal_access_tokens" style="text-decoration:underline;">Gitee</a>]'
+                  +' [<a href="https://github.com/settings/tokens" style="text-decoration:underline;">GitHub</a>])';
+              showTextBox(msg, '速率限制', (token)=>{
+                if (token) {
+                  localStorage.setItem('gitToken', token);
+                }
+              });
+              return;
+            }
+            if (msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('bad credentials')) {
+              msg += '<br><br>检测到您的API已失效，已自动清除，请重新进行请求';
+              localStorage.removeItem('gitToken');
+              showDialog(msg);
+              return;
+            }
+            showDialog(msg);
+          }
         }
       }, base_url_slash);
     }
@@ -290,16 +310,72 @@ function changePackVersion(code, name, url, hash) {
 }
 
 // 通过拓展包的Git历史生成可以切换的历史版本列表
-function createGitList(tree, pack_name, pack_code, hash) {
+function createGitList(tree, pack_code, pack_name, pack_url, hash) {
+
+  // 新增提交记录到分支页面
+  function addCommitToPage(page, commit) {
+    let message = commit.message;
+    let author = commit.author;
+    let sha = commit.sha;
+    let commit_div = document.createElement('div');
+    commit_div.classList.add('capsule');
+    commit_div.innerHTML = `
+      <i class="bi" title="描述">&#xF251;</i>
+      <span style="flex-grow:1;">`+message+`</span>
+      <i class="bi" title="作者">&#xF4DA;</i>
+      <span style="white-space:nowrap;">`+author+`</span>
+      <i class="bi" title="版本">&#xF69D;</i>
+      <span style="white-space:nowrap;">`+sha.slice(0, 8)+`</span>
+    `;
+    let toggle_div = document.createElement('div');
+    let toggle_btn = document.createElement('div');
+    toggle_btn.classList.add('btn');
+    toggle_btn.innerText = '切换';
+    toggle_btn.dataset.sha = sha;
+    toggle_btn.onclick = (e)=>{
+      let new_hash = e.target.dataset.sha;
+      setPackVersion(
+        server_name,
+        pack_name,
+        pack_code,
+        branch,
+        hash,
+        new_hash,
+        base_url_slash)
+      ;
+    };
+    toggle_div.appendChild(toggle_btn);
+    commit_div.appendChild(toggle_div);
+    page.appendChild(commit_div);
+  }
 
   // 切换分支
   function togglePage(self) {
-    let branch = self.target.innerText;
+    let branch = self.target.dataset.name;
+    let branch_hash = self.target.dataset.sha;
+    let commit_page = document.getElementById(branch);
     document.querySelectorAll('#git_nav li').forEach((e)=>e.classList.remove('active'));
     self.target.classList.add('active');
     document.querySelectorAll('.commit_page').forEach((e)=>e.classList.remove('active'));
-    document.getElementById(branch)?.classList.add('active');
+    commit_page.classList.add('active');
+    if (commit_page.querySelector('.capsule')) {
+      return;
+    }
+    getBranchCommits(pack_url, branch_hash, (data)=>{
+      if(data?.retcode == 0) {
+        commit_page.innerHTML = '';
+        let commits = data.data;
+        for(let i in commits) {
+          let commit = commits[i];
+          addCommitToPage(commit_page, commit);
+        }
+      } else {
+        if(data?.msg) showDialog(data?.msg);
+      }
+    }, base_url_slash);
   }
+
+  let has_active = false;
 
   let git_nav = document.createElement('ul');
   git_nav.id = 'git_nav';
@@ -309,54 +385,28 @@ function createGitList(tree, pack_name, pack_code, hash) {
   for(let branch in tree) {
     let branch_li = document.createElement('li');
     branch_li.innerText = branch;
-    if(git_nav.children.length == 0) {
-      branch_li.classList.add('active');
-    }
+    branch_li.dataset.name = branch;
+    branch_li.dataset.sha = tree[branch].sha;
     branch_li.onclick = togglePage;
-    git_nav.appendChild(branch_li);
     let commit_page = document.createElement('div');
     commit_page.id = branch;
     commit_page.classList.add('commit_page');
-    if(git_content.children.length == 0) {
-      commit_page.classList.add('active');
-    }
-    for(let i in tree[branch]?.commits) {
+    for(let i in tree[branch].commits) {
       let commit = tree[branch].commits[i];
-      let message = commit.message;
-      let author = commit.author;
-      let sha = commit.sha;
-      let commit_div = document.createElement('div');
-      commit_div.classList.add('capsule');
-      commit_div.innerHTML = `
-        <i class="bi" title="描述">&#xF251;</i>
-        <span style="flex-grow:1;">`+message+`</span>
-        <i class="bi" title="作者">&#xF4DA;</i>
-        <span style="white-space:nowrap;">`+author+`</span>
-        <i class="bi" title="版本">&#xF69D;</i>
-        <span style="white-space:nowrap;">`+sha.slice(0, 8)+`</span>
-      `;
-      let toggle_div = document.createElement('div');
-      let toggle_btn = document.createElement('div');
-      toggle_btn.classList.add('btn');
-      toggle_btn.innerText = '切换';
-      toggle_btn.dataset.sha = sha;
-      toggle_btn.onclick = (e)=>{
-        let new_hash = e.target.dataset.sha;
-        setPackVersion(
-          server_name,
-          pack_name,
-          pack_code,
-          branch,
-          hash,
-          new_hash,
-          base_url_slash)
-        ;
-      };
-      toggle_div.appendChild(toggle_btn);
-      commit_div.appendChild(toggle_div);
-      commit_page.appendChild(commit_div);
+      addCommitToPage(commit_page, commit);
+    }
+    if (tree[branch].commits.length == 0) {
+      commit_page.innerHTML = '<i class="bi rotate"><b>&#xF130;</b></i>';
     }
     git_content.appendChild(commit_page);
+    if (!has_active && tree[branch].commits.length != 0) {
+      git_nav.insertBefore(branch_li, git_nav.firstChild);
+      branch_li.classList.add('active');
+      commit_page.classList.add('active');
+      has_active = true;
+    } else {
+      git_nav.appendChild(branch_li);
+    }
   }
   let div = document.createElement('div');
   div.id = 'git_tree';
@@ -417,7 +467,7 @@ socket.on('connect_error', function() {
 let terminal_input = document.querySelector('.terminal-input input');
 const history = localStorage.getItem('cmd_history') ? JSON.parse(localStorage.getItem('cmd_history')) : [];
 let currentIndex = history.length;
-terminal_input.addEventListener('keydown', function(e) {
+terminal_input.addEventListener('keyup', function(e) {
   if (e.key === 'ArrowUp') {
     e.preventDefault();
     if (currentIndex > 0) {
