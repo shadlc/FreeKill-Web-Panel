@@ -462,7 +462,11 @@ def getGameServerStat(server_path: str) -> list[bool, str]:
         month_active_result = cursor.fetchone()
         month_active = month_active_result[0] if len(month_active_result) else 0
         # 查询玩家胜率
-        cursor.execute('SELECT * FROM playerWinRate;')
+        new_table = cursor.execute("SELECT name FROM sqlite_master WHERE name='pWinRateView';").fetchone()
+        if new_table:
+            cursor.execute('SELECT * FROM pWinRateView;')
+        else:
+            cursor.execute('SELECT * FROM playerWinRate;')
         player_win_rate_result = cursor.fetchall()
         player_win_rate = {"0_all": {}}
         for item in player_win_rate_result:
@@ -480,7 +484,11 @@ def getGameServerStat(server_path: str) -> list[bool, str]:
             data = player_win_rate["0_all"][player]
             player_win_rate["0_all"][player][0] = round(data[1] / data[4] * 100, 2)
         # 查询角色胜率
-        cursor.execute('SELECT * FROM generalWinRate;')
+        new_table = cursor.execute("SELECT name FROM sqlite_master WHERE name='gWinRateView';").fetchone()
+        if new_table:
+            cursor.execute('SELECT * FROM gWinRateView;')
+        else:
+            cursor.execute('SELECT * FROM generalWinRate;')
         general_win_rate_result = cursor.fetchall()
         general_win_rate = {"0_all": {}}
         for item in general_win_rate_result:

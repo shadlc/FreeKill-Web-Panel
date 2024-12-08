@@ -83,6 +83,7 @@ badge {
     padding: 0 0.2rem;
     margin: 0 0.2rem;
     border-radius: 0.4rem;
+    white-space: nowrap;
 }
 footer {
     position: absolute;
